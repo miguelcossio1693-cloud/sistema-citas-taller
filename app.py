@@ -74,6 +74,27 @@ if st.session_state.usuario is None:
     st.stop()
 
 # =============================
+# HEADER + CERRAR SESIÓN
+# =============================
+col_user, col_logout = st.columns([8,2])
+
+with col_user:
+    st.markdown(
+        f"👤 **Usuario:** {st.session_state.usuario} | "
+        f"Rol: {st.session_state.rol} | "
+        f"Sede: {st.session_state.sede}"
+    )
+
+with col_logout:
+    if st.button("🔓 Cerrar sesión"):
+        st.session_state.usuario = None
+        st.session_state.rol = None
+        st.session_state.sede = None
+        st.rerun()
+
+st.divider()
+
+# =============================
 # ARCHIVOS
 # =============================
 if not os.path.exists(ARCHIVO_CITAS):
@@ -183,7 +204,6 @@ else:
 
     tab1, tab2 = st.tabs(["📅 Agendar","📈 Mi Avance"])
 
-    # AGENDAR
     with tab1:
         st.title("Agendar Cita")
 
@@ -248,7 +268,6 @@ else:
             st.session_state.sede
         )
 
-    # MI AVANCE
     with tab2:
         st.title("Mi Avance")
 
@@ -286,7 +305,6 @@ else:
         if meta_sede>0:
             st.progress(min(total_citas/meta_sede,1.0))
 
-        # CALENDARIO
         st.divider()
         conteo = df_mes.groupby(df_mes["Fecha"].dt.day)["ID"].count().to_dict()
         cal = calendar.monthcalendar(año_sel, mes_sel)
