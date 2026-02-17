@@ -445,18 +445,61 @@ else:
                     "Nombre":nombre,
                     "Celular":celular,
                     "TipoServicio":servicio,
-                    "Duracion":duracion
+                    "Duracion":duracion,
+                    "Estado":"PROGRAMADA"
                 }])
+
                 df = pd.concat([df,nueva],ignore_index=True)
                 df.to_csv(ARCHIVO_CITAS,index=False)
                 st.success("Cita registrada")
                 st.rerun()
 
+        # 🔹 TABLERO
         mostrar_tablero(
             df[(df["Sede"]==st.session_state.sede) &
                (df["Fecha"]==str(fecha))],
             st.session_state.sede
         )
+
+        # =====================================================
+        # 📋 CONTROL DE ASISTENCIA
+        # =====================================================
+        st.divider()
+        st.subheader("📋 Control de Asistencia")
+
+        df_dia_control = df[
+            (df["Sede"] == st.session_state.sede) &
+            (df["Fecha"] == str(fecha))
+        ].sort_values("Hora")
+
+        if df_dia_control.empty:
+            st.info("No hay citas para esta fecha.")
+        else:
+            for index, row in df_dia_control.iterrows():
+
+                col1, col2, col3, col4, col5 = st.columns([3,1,2,1,1])
+
+                with col1:
+                    st.write(f"**{row['Nombre']}**")
+                    st.caption(f"{row['Placa']} - {row['Modelo']}")
+
+                with col2:
+                    st.write(row["Hora"])
+
+                with col3:
+                    st.write(row["Tecnico"])
+
+                with col4:
+                    if st.button("✔", key=f"ok_{row['ID']}"):
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "ASISTIO"
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.rerun()
+
+                with col5:
+                    if st.button("✖", key=f"no_{row['ID']}"):
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "NO ASISTIO"
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.rerun()
 
     with tab2:
         st.title("Mi Avance")
@@ -526,6 +569,7 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
 
 
