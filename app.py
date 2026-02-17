@@ -203,7 +203,6 @@ if st.session_state.rol == "admin":
             datos_grafico = []
     
             for sede in SEDES:
-    
                 df_sede = df_mes[df_mes["Sede"] == sede]
                 total_citas = len(df_sede)
     
@@ -232,6 +231,56 @@ if st.session_state.rol == "admin":
     
             st.subheader("📋 Detalle por Sede")
             st.dataframe(df_grafico, use_container_width=True)
+
+            # 🔽 AQUÍ VA EL CALENDARIO (bien indentado)
+            st.divider()
+            st.subheader("📅 Calendario de Agendamiento por Sede")
+
+            for sede in SEDES:
+
+                st.markdown(f"### 🏢 {sede}")
+
+                df_sede_cal = df_mes[df_mes["Sede"] == sede]
+
+                conteo = (
+                    df_sede_cal
+                    .groupby(df_sede_cal["Fecha"].dt.day)["ID"]
+                    .count()
+                    .to_dict()
+                )
+
+                cal = calendar.monthcalendar(año_sel, mes_sel)
+
+                html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
+                html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
+
+                for semana in cal:
+                    html += "<tr>"
+                    for dia in semana:
+                        if dia == 0:
+                            html += "<td></td>"
+                        else:
+                            cant = conteo.get(dia, 0)
+
+                            if cant == 0:
+                                color = "#BFC9CA"
+                            elif cant <= 2:
+                                color = "#2E86C1"
+                            elif cant <= 4:
+                                color = "#28B463"
+                            else:
+                                color = "#CB4335"
+
+                            html += "<td style='padding:10px;border:1px solid #ddd;font-weight:bold;"
+                            html += f"color:{color};font-size:14px;'>"
+                            html += f"{dia}<br><span style='font-size:11px;'>{cant} citas</span></td>"
+
+                    html += "</tr>"
+
+                html += "</table>"
+                st.markdown(html, unsafe_allow_html=True)
+
+                st.divider()
 
     with tab2:
         st.title("Configurar Meta")
@@ -385,5 +434,6 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
 
