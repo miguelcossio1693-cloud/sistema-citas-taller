@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import calendar
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(layout="wide")
 
@@ -43,7 +44,7 @@ TECNICOS = {
 
     "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL"],
     "TARAPOTO": ["BILLY", "ENRIQUE", "JULIO", "MARCOS", "ANSELMO", "ESLEYTER", "HANS", "FREDDY"],
-    "YURIMAGUAS": ["Jose", "Junior", "Guido", "Jhon"],
+    "YURIMAGUAS": ["JOSE", "JUNIOR", "GUIDO", "JHON"],
     
     # SEDES TEMPORALES
     "BAGUA": ["TEC 1", "TEC 2"],
@@ -138,6 +139,12 @@ with col_logout:
         st.rerun()
 
 st.divider()
+
+# =============================
+# AUTO REFRESH SOLO PARA ASESOR
+# =============================
+if st.session_state.rol == "asesor":
+    st_autorefresh(interval=10000, key="auto_refresh")
 
 # =============================
 # ARCHIVOS
@@ -509,5 +516,6 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
 
