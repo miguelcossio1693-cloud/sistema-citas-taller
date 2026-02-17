@@ -19,12 +19,13 @@ ARCHIVO_METAS = "metas.csv"
 # =============================
 USUARIOS = {
     "admin": {"password": "1234", "rol": "admin", "sede": "TODAS"},
+
     "tarapoto": {"password": "1234", "rol": "asesor", "sede": "TARAPOTO"},
     "jaen": {"password": "1234", "rol": "asesor", "sede": "JAEN"},
     "bagua": {"password": "1234", "rol": "asesor", "sede": "BAGUA"},
     "moyobamba": {"password": "1234", "rol": "asesor", "sede": "MOYOBAMBA"},
-    "iquitos prospero": {"password": "1234", "rol": "asesor", "sede": "IQUITOS PROSPERO"},
-    "iquitos quiñones": {"password": "1234", "rol": "asesor", "sede": "IQUITOS QUIÑONES"},
+    "iquitos_prospero": {"password": "1234", "rol": "asesor", "sede": "IQUITOS PROSPERO"},
+    "iquitos_quinones": {"password": "1234", "rol": "asesor", "sede": "IQUITOS QUIÑONES"},
     "pucallpa": {"password": "1234", "rol": "asesor", "sede": "PUCALLPA"},
     "yurimaguas": {"password": "1234", "rol": "asesor", "sede": "YURIMAGUAS"},
 }
@@ -35,20 +36,64 @@ SEDES = [
     "PUCALLPA","YURIMAGUAS"
 ]
 
-TECNICOS_JAEN = ["CARLOS","JAIRO","LUIS EDWIN","MESIAS","DAGNER","ABEL"]
+# =============================
+# TECNICOS POR SEDE
+# =============================
+TECNICOS = {
 
+    "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL"],
+    "TARAPOTO": ["BILLY", "ENRIQUE", "JULIO", "MARCOS", "ANSELMO", "ESLEYTER", "HANS", "FREDDY"],
+    "YURIMAGUAS": ["Jose", "Junior", "Guido", "Jhon"],
+    
+    # SEDES TEMPORALES
+    "BAGUA": ["TEC 1", "TEC 2"],
+    "MOYOBAMBA": ["TEC 1", "TEC 2"],
+    "IQUITOS PROSPERO": ["TEC 1", "TEC 2"],
+    "IQUITOS QUIÑONES": ["TEC 1", "TEC 2"],
+    "PUCALLPA": ["TEC 1", "TEC 2"],
+}
+
+# =============================
+# COLORES
+# =============================
 COLORES = {
+
+    # JAEN
     "CARLOS": "#AED6F1",
     "JAIRO": "#A9DFBF",
     "LUIS EDWIN": "#F9E79F",
     "MESIAS": "#F5B7B1",
     "DAGNER": "#D2B4DE",
     "ABEL": "#FAD7A0",
+
+    # TARAPOTO
+    "BILLY": "#85C1E9",
+    "ENRIQUE": "#82E0AA",
+    "JULIO": "#F7DC6F",
+    "MARCOS": "#F1948A",
+    "ANSELMO": "#BB8FCE",
+    "ESLEYTER": "#F8C471",
+    "HANS": "#76D7C4",
+    "FREDDY": "#F5B041",
+
+    # YURIMAGUAS
+    "JOSE": "#7FB3D5",
+    "JUNIOR": "#73C6B6",
+    "GUIDO": "#F7DC6F",
+    "JHON": "#F1948A",
+
+    # TECNICOS TEMPORALES
+    "TEC 1": "#D5DBDB",
+    "TEC 2": "#AEB6BF",
+
     "ASESOR": "#D5D8DC"
 }
 
+# =============================
+# FUNCION DINAMICA
+# =============================
 def obtener_tecnicos(sede):
-    return TECNICOS_JAEN if sede == "JAEN" else ["ASESOR"]
+    return TECNICOS.get(sede, ["ASESOR"])
 
 # =============================
 # LOGIN
@@ -464,4 +509,5 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
