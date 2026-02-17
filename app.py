@@ -317,7 +317,7 @@ if st.session_state.rol == "admin":
             df_mes["Estado"] = "Pendiente"
 
         # =====================================================
-        # GRAFICO AVANCE POR SEDE
+        # KPI AVANCE POR SEDE
         # =====================================================
         datos_grafico = []
 
@@ -347,7 +347,31 @@ if st.session_state.rol == "admin":
         df_grafico = pd.DataFrame(datos_grafico)
 
         st.subheader("📈 Avance por Sede (%)")
-        st.bar_chart(df_grafico.set_index("Sede")["Avance %"])
+        st.divider()
+
+        cols = st.columns(4)
+
+        for i, row in df_grafico.iterrows():
+
+            col = cols[i % 4]
+
+            with col:
+
+                avance = row["Avance %"]
+
+                # Semáforo automático
+                if avance >= 100:
+                    emoji = "🟢"
+                elif avance >= 70:
+                    emoji = "🟡"
+                else:
+                    emoji = "🔴"
+
+                st.metric(
+                    label=f"{emoji} {row['Sede']}",
+                    value=f"{avance}%",
+                    delta=f"{row['Citas']} / {row['Meta']}"
+                )
 
         st.divider()
 
@@ -430,7 +454,7 @@ if st.session_state.rol == "admin":
             ])
             metas.to_csv(ARCHIVO_METAS, index=False)
             st.success("Meta guardada correctamente")
-            
+
 # =============================
 # ASESOR
 # =============================
@@ -738,6 +762,7 @@ else:
         colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
         colB.metric("❌ % No Show", f"{no_show_pct}%")
         colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+
 
 
 
