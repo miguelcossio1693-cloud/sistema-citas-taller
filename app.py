@@ -221,9 +221,6 @@ def mostrar_tablero(df_dia, sede):
 # =============================
 # ADMIN
 # =============================
-# =============================
-# ADMIN
-# =============================
 if st.session_state.rol == "admin":
 
     tab1, tab2 = st.tabs(["📊 Resumen","🎯 Configurar Meta"])
@@ -382,15 +379,18 @@ if st.session_state.rol == "admin":
 # =============================
 else:
 
-    tab1, tab2 = st.tabs(["📅 Agendar","📈 Mi Avance"])
+    tab1, tab2, tab3 = st.tabs(["📅 Agendar","📋 Gestión de Citas","📈 Mi Avance"])
 
+    # =====================================================
+    # TAB 1 - AGENDAR
+    # =====================================================
     with tab1:
         st.title("Agendar Cita")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            fecha = st.date_input("Fecha")
+            fecha = st.date_input("Fecha", min_value=datetime.today())
             hora = st.selectbox("Hora inicio",[f"{h:02d}:00" for h in range(8,19)])
             duracion = st.number_input("Duración (horas)",1,8,1)
             tecnico = st.selectbox("Técnico", obtener_tecnicos(st.session_state.sede))
@@ -403,6 +403,10 @@ else:
             servicio = st.text_input("Tipo de Servicio")
 
         if st.button("Guardar"):
+
+            if not placa or not modelo or not nombre or not servicio:
+                st.warning("Completa todos los datos obligatorios")
+                st.stop()
 
             df_dia = df[(df["Sede"]==st.session_state.sede) &
                         (df["Fecha"]==str(fecha))]
@@ -435,7 +439,9 @@ else:
                     "Nombre":nombre,
                     "Celular":celular,
                     "TipoServicio":servicio,
-                    "Duracion":duracion
+                    "Duracion":duracion,
+                    "Estado":"Pendiente",
+                    "Reprogramada":"No"
                 }])
                 df = pd.concat([df,nueva],ignore_index=True)
                 df.to_csv(ARCHIVO_CITAS,index=False)
@@ -448,7 +454,98 @@ else:
             st.session_state.sede
         )
 
+    # =====================================================
+    # TAB 2 - GESTIÓN DE CITAS
+    # =====================================================
     with tab2:
+
+        st.title("📋 Gestión de Citas")
+
+        hoy = datetime.today().date()
+
+        df_sede = df[df["Sede"]==st.session_state.sede].copy()
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
+
+        df_hoy = df_sede[df_sede["Fecha"] == hoy]
+
+        if df_hoy.empty:
+            st.info("No hay citas para hoy")
+        else:
+            for i, row in df_hoy.iterrows():
+
+                st.markdown("---")
+                col1, col2, col3 = st.columns([4,2,2])
+
+                with col1:
+                    st.markdown(f"""
+                    **Cliente:** {row['Nombre']}  
+                    **Placa:** {row['Placa']}  
+                    **Modelo:** {row['Modelo']}  
+                    **Servicio:** {row['TipoServicio']}  
+                    **Hora:** {row['Hora']}
+                    """)
+
+                with col2:
+                    if st.button(f"✔ Asistió {row['ID']}"):
+                        df.loc[df["ID"]==row["ID"],"Estado"]="Asistió"
+                        df.to_csv(ARCHIVO_CITAS,index=False)
+                        st.rerun()
+
+                    if st.button(f"❌ No asistió {row['ID']}"):
+                        df.loc[df["ID"]==row["ID"],"Estado"]="No asistió"
+                        df.to_csv(ARCHIVO_CITAS,index=False)
+                        st.rerun()
+
+                with col3:
+                    with st.expander("🔄 Reprogramar"):
+
+                        nueva_fecha = st.date_input(
+                            "Nueva fecha",
+                            min_value=hoy,
+                            key=f"fecha_{row['ID']}"
+                        )
+
+                        nueva_hora = st.selectbox(
+                            "Nueva hora",
+                            [f"{h:02d}:00" for h in range(8,19)],
+                            key=f"hora_{row['ID']}"
+                        )
+
+                        nuevo_tecnico = st.selectbox(
+                            "Técnico",
+                            obtener_tecnicos(st.session_state.sede),
+                            key=f"tec_{row['ID']}"
+                        )
+
+                        if st.button(f"Guardar nueva cita {row['ID']}"):
+
+                            nuevo_id = df["ID"].max()+1
+
+                            nueva = pd.DataFrame([{
+                                "ID":nuevo_id,
+                                "Sede":st.session_state.sede,
+                                "Fecha":str(nueva_fecha),
+                                "Hora":nueva_hora,
+                                "Tecnico":nuevo_tecnico,
+                                "Placa":row["Placa"],
+                                "Modelo":row["Modelo"],
+                                "Nombre":row["Nombre"],
+                                "Celular":row["Celular"],
+                                "TipoServicio":row["TipoServicio"],
+                                "Duracion":row["Duracion"],
+                                "Estado":"Pendiente",
+                                "Reprogramada":"Sí"
+                            }])
+
+                            df.loc[df["ID"]==row["ID"],"Estado"]="No asistió"
+                            df = pd.concat([df,nueva],ignore_index=True)
+                            df.to_csv(ARCHIVO_CITAS,index=False)
+                            st.rerun()
+
+    # =====================================================
+    # TAB 3 - MI AVANCE
+    # =====================================================
+    with tab3:
         st.title("Mi Avance")
 
         df_sede = df[df["Sede"]==st.session_state.sede].copy()
@@ -484,38 +581,5 @@ else:
 
         if meta_sede>0:
             st.progress(min(total_citas/meta_sede,1.0))
-
-        st.divider()
-        conteo = df_mes.groupby(df_mes["Fecha"].dt.day)["ID"].count().to_dict()
-        cal = calendar.monthcalendar(año_sel, mes_sel)
-
-        html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
-        html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
-
-        for semana in cal:
-            html += "<tr>"
-            for dia in semana:
-                if dia == 0:
-                    html += "<td></td>"
-                else:
-                    cant = conteo.get(dia, 0)
-                    if cant == 0:
-                        color = "#BFC9CA"
-                    elif cant <= 2:
-                        color = "#2E86C1"
-                    elif cant <= 4:
-                        color = "#28B463"
-                    else:
-                        color = "#CB4335"
-
-                    html += "<td style='padding:12px;border:1px solid #ddd;font-weight:bold;"
-                    html += f"color:{color};font-size:16px;'>"
-                    html += f"{dia}<br><span style='font-size:12px;'>{cant} citas</span></td>"
-
-            html += "</tr>"
-
-        html += "</table>"
-        st.markdown(html, unsafe_allow_html=True)
-
 
 
