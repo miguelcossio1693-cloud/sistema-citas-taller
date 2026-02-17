@@ -169,131 +169,161 @@ def mostrar_tablero(df_dia, sede):
 # =============================
 # ADMIN
 # =============================
+# =============================
+# ADMIN
+# =============================
 if st.session_state.rol == "admin":
 
     tab1, tab2 = st.tabs(["📊 Resumen","🎯 Configurar Meta"])
 
+    # =====================================================
+    # TAB 1 - RESUMEN GENERAL
+    # =====================================================
     with tab1:
+
         st.title("📊 Resumen General por Sede")
-    
-        if not df.empty:
-    
+
+        # Si no hay datos, creamos estructura mínima
+        if df.empty:
+            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha"])
+        else:
             df_admin = df.copy()
             df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
-    
-            año_sel = st.selectbox(
-                "Año",
-                sorted(df_admin["Fecha"].dt.year.unique(), reverse=True),
-                key="admin_year"
-            )
-    
-            mes_sel = st.selectbox(
-                "Mes",
-                list(range(1,13)),
-                index=datetime.today().month-1,
-                format_func=lambda x: calendar.month_name[x],
-                key="admin_month"
-            )
-    
+
+        # Selector Año
+        año_sel = st.selectbox(
+            "Año",
+            sorted(df_admin["Fecha"].dt.year.unique(), reverse=True)
+            if not df_admin.empty else [datetime.today().year],
+            key="admin_year"
+        )
+
+        # Selector Mes
+        mes_sel = st.selectbox(
+            "Mes",
+            list(range(1,13)),
+            index=datetime.today().month-1,
+            format_func=lambda x: calendar.month_name[x],
+            key="admin_month"
+        )
+
+        # Filtrado mensual
+        if not df_admin.empty:
             df_mes = df_admin[
                 (df_admin["Fecha"].dt.year == año_sel) &
                 (df_admin["Fecha"].dt.month == mes_sel)
             ]
-    
-            datos_grafico = []
-    
-            for sede in SEDES:
-                df_sede = df_mes[df_mes["Sede"] == sede]
-                total_citas = len(df_sede)
-    
-                meta_sede = 0
-                fila_meta = metas[metas["Sede"] == sede]
-                if not fila_meta.empty:
-                    meta_sede = int(fila_meta["MetaMensual"].values[0])
-    
-                porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede>0 else 0
-    
-                datos_grafico.append({
-                    "Sede": sede,
-                    "Citas": total_citas,
-                    "Meta": meta_sede,
-                    "Avance %": porcentaje
-                })
-    
-            df_grafico = pd.DataFrame(datos_grafico)
-    
-            st.subheader("📈 Avance por Sede (%)")
-            st.bar_chart(
-                df_grafico.set_index("Sede")["Avance %"]
+        else:
+            df_mes = pd.DataFrame(columns=["ID","Sede","Fecha"])
+
+        # =====================================================
+        # GRAFICO AVANCE POR SEDE
+        # =====================================================
+        datos_grafico = []
+
+        for sede in SEDES:
+
+            df_sede = df_mes[df_mes["Sede"] == sede]
+            total_citas = len(df_sede)
+
+            meta_sede = 0
+            fila_meta = metas[metas["Sede"] == sede]
+            if not fila_meta.empty:
+                meta_sede = int(fila_meta["MetaMensual"].values[0])
+
+            porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede>0 else 0
+
+            datos_grafico.append({
+                "Sede": sede,
+                "Citas": total_citas,
+                "Meta": meta_sede,
+                "Avance %": porcentaje
+            })
+
+        df_grafico = pd.DataFrame(datos_grafico)
+
+        st.subheader("📈 Avance por Sede (%)")
+        st.bar_chart(df_grafico.set_index("Sede")["Avance %"])
+
+        st.divider()
+
+        st.subheader("📋 Detalle por Sede")
+        st.dataframe(df_grafico, use_container_width=True)
+
+        # =====================================================
+        # CALENDARIOS POR SEDE (SIEMPRE VISIBLES)
+        # =====================================================
+        st.divider()
+        st.subheader("📅 Calendario de Agendamiento por Sede")
+
+        for sede in SEDES:
+
+            st.markdown(f"### 🏢 {sede}")
+
+            df_sede_cal = df_mes[df_mes["Sede"] == sede]
+
+            conteo = (
+                df_sede_cal
+                .groupby(df_sede_cal["Fecha"].dt.day)["ID"]
+                .count()
+                .to_dict()
+                if not df_sede_cal.empty else {}
             )
-    
-            st.divider()
-    
-            st.subheader("📋 Detalle por Sede")
-            st.dataframe(df_grafico, use_container_width=True)
 
-            # 🔽 AQUÍ VA EL CALENDARIO (bien indentado)
-            st.divider()
-            st.subheader("📅 Calendario de Agendamiento por Sede")
+            cal = calendar.monthcalendar(año_sel, mes_sel)
 
-            for sede in SEDES:
+            html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
+            html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
 
-                st.markdown(f"### 🏢 {sede}")
+            for semana in cal:
+                html += "<tr>"
+                for dia in semana:
+                    if dia == 0:
+                        html += "<td></td>"
+                    else:
+                        cant = conteo.get(dia, 0)
 
-                df_sede_cal = df_mes[df_mes["Sede"] == sede]
-
-                conteo = (
-                    df_sede_cal
-                    .groupby(df_sede_cal["Fecha"].dt.day)["ID"]
-                    .count()
-                    .to_dict()
-                )
-
-                cal = calendar.monthcalendar(año_sel, mes_sel)
-
-                html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
-                html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
-
-                for semana in cal:
-                    html += "<tr>"
-                    for dia in semana:
-                        if dia == 0:
-                            html += "<td></td>"
+                        if cant == 0:
+                            color = "#BFC9CA"
+                        elif cant <= 2:
+                            color = "#2E86C1"
+                        elif cant <= 4:
+                            color = "#28B463"
                         else:
-                            cant = conteo.get(dia, 0)
+                            color = "#CB4335"
 
-                            if cant == 0:
-                                color = "#BFC9CA"
-                            elif cant <= 2:
-                                color = "#2E86C1"
-                            elif cant <= 4:
-                                color = "#28B463"
-                            else:
-                                color = "#CB4335"
+                        html += "<td style='padding:10px;border:1px solid #ddd;font-weight:bold;"
+                        html += f"color:{color};font-size:14px;'>"
+                        html += f"{dia}<br><span style='font-size:11px;'>{cant} citas</span></td>"
 
-                            html += "<td style='padding:10px;border:1px solid #ddd;font-weight:bold;"
-                            html += f"color:{color};font-size:14px;'>"
-                            html += f"{dia}<br><span style='font-size:11px;'>{cant} citas</span></td>"
+                html += "</tr>"
 
-                    html += "</tr>"
+            html += "</table>"
+            st.markdown(html, unsafe_allow_html=True)
 
-                html += "</table>"
-                st.markdown(html, unsafe_allow_html=True)
+            st.divider()
 
-                st.divider()
-
+    # =====================================================
+    # TAB 2 - CONFIGURAR META
+    # =====================================================
     with tab2:
-        st.title("Configurar Meta")
+
+        st.title("🎯 Configurar Meta")
+
         sede_meta = st.selectbox("Sede", SEDES, key="meta_sede")
-        nueva_meta = st.number_input("Meta mensual",0,1000,0)
+        nueva_meta = st.number_input("Meta mensual", 0, 1000, 0)
 
         if st.button("Guardar Meta"):
-            metas = metas[metas["Sede"]!=sede_meta]
-            metas = pd.concat([metas,
-                pd.DataFrame([{"Sede":sede_meta,"MetaMensual":nueva_meta}])
+            metas = metas[metas["Sede"] != sede_meta]
+            metas = pd.concat([
+                metas,
+                pd.DataFrame([{
+                    "Sede": sede_meta,
+                    "MetaMensual": nueva_meta
+                }])
             ])
-            metas.to_csv(ARCHIVO_METAS,index=False)
-            st.success("Meta guardada")
+            metas.to_csv(ARCHIVO_METAS, index=False)
+            st.success("Meta guardada correctamente")
 
 # =============================
 # ASESOR
@@ -434,3 +464,4 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
