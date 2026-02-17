@@ -505,19 +505,27 @@ with tab2:
 
     st.title("📋 Gestión de Citas")
 
-    hoy = datetime.today().date()
+    # ==========================================
+    # FILTRO DE FECHA
+    # ==========================================
+    fecha_gestion = st.date_input(
+        "Seleccionar fecha",
+        value=datetime.today(),
+        key="filtro_gestion"
+    )
 
     df_sede = df[df["Sede"] == st.session_state.sede].copy()
     df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
 
-    df_hoy = df_sede[df_sede["Fecha"] == hoy]
+    df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
 
-    if df_hoy.empty:
-        st.info("No hay citas para hoy")
+    if df_filtrado.empty:
+        st.info("No hay citas para la fecha seleccionada")
     else:
-        for i, row in df_hoy.iterrows():
+        for i, row in df_filtrado.iterrows():
 
             st.markdown("---")
+
             col1, col2, col3, col4 = st.columns([4,2,3,1])
 
             # ==========================
@@ -587,13 +595,13 @@ with tab2:
                     st.rerun()
 
             # ==========================
-            # REPROGRAMAR (debajo completo)
+            # REPROGRAMAR
             # ==========================
             with st.expander(f"🔄 Reprogramar {row['ID']}"):
 
                 nueva_fecha = st.date_input(
                     "Nueva fecha",
-                    min_value=hoy,
+                    value=fecha_gestion,
                     key=f"fecha_{row['ID']}"
                 )
 
@@ -637,6 +645,7 @@ with tab2:
 
                     st.success("Cita reprogramada correctamente")
                     st.rerun()
+
     # =====================================================
     # TAB 3 - MI AVANCE
     # =====================================================
@@ -711,5 +720,6 @@ with tab2:
         colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
         colB.metric("❌ % No Show", f"{no_show_pct}%")
         colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+
 
 
