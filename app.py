@@ -434,6 +434,3 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
-
-
-
