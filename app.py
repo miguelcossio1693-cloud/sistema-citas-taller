@@ -234,9 +234,6 @@ def mostrar_tablero(df_dia, sede):
 # =============================
 # ADMIN
 # =============================
-# =============================
-# ADMIN
-# =============================
 if st.session_state.rol == "admin":
 
     tab1, tab2 = st.tabs(["📊 Resumen","🎯 Configurar Meta"])
@@ -529,6 +526,7 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
 
 
