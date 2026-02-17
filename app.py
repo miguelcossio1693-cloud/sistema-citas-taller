@@ -174,15 +174,64 @@ if st.session_state.rol == "admin":
     tab1, tab2 = st.tabs(["📊 Resumen","🎯 Configurar Meta"])
 
     with tab1:
-        st.title("Resumen General")
-        sede_sel = st.selectbox("Sede", SEDES)
-        fecha_tab = st.date_input("Fecha")
-
-        mostrar_tablero(
-            df[(df["Sede"]==sede_sel) &
-               (df["Fecha"]==str(fecha_tab))],
-            sede_sel
-        )
+        st.title("📊 Resumen General por Sede")
+    
+        if not df.empty:
+    
+            df_admin = df.copy()
+            df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
+    
+            año_sel = st.selectbox(
+                "Año",
+                sorted(df_admin["Fecha"].dt.year.unique(), reverse=True),
+                key="admin_year"
+            )
+    
+            mes_sel = st.selectbox(
+                "Mes",
+                list(range(1,13)),
+                index=datetime.today().month-1,
+                format_func=lambda x: calendar.month_name[x],
+                key="admin_month"
+            )
+    
+            df_mes = df_admin[
+                (df_admin["Fecha"].dt.year == año_sel) &
+                (df_admin["Fecha"].dt.month == mes_sel)
+            ]
+    
+            datos_grafico = []
+    
+            for sede in SEDES:
+    
+                df_sede = df_mes[df_mes["Sede"] == sede]
+                total_citas = len(df_sede)
+    
+                meta_sede = 0
+                fila_meta = metas[metas["Sede"] == sede]
+                if not fila_meta.empty:
+                    meta_sede = int(fila_meta["MetaMensual"].values[0])
+    
+                porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede>0 else 0
+    
+                datos_grafico.append({
+                    "Sede": sede,
+                    "Citas": total_citas,
+                    "Meta": meta_sede,
+                    "Avance %": porcentaje
+                })
+    
+            df_grafico = pd.DataFrame(datos_grafico)
+    
+            st.subheader("📈 Avance por Sede (%)")
+            st.bar_chart(
+                df_grafico.set_index("Sede")["Avance %"]
+            )
+    
+            st.divider()
+    
+            st.subheader("📋 Detalle por Sede")
+            st.dataframe(df_grafico, use_container_width=True)
 
     with tab2:
         st.title("Configurar Meta")
@@ -336,4 +385,5 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
