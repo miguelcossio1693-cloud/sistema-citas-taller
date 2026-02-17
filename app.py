@@ -430,6 +430,7 @@ if st.session_state.rol == "admin":
             ])
             metas.to_csv(ARCHIVO_METAS, index=False)
             st.success("Meta guardada correctamente")
+            
 # =============================
 # ASESOR
 # =============================
@@ -515,153 +516,153 @@ else:
             st.session_state.sede
         )
 
-# =====================================================
-# TAB 2 - GESTIÓN DE CITAS
-# =====================================================
-with tab2:
-
-    st.title("📋 Gestión de Citas")
-
-    # ==========================================
-    # FILTRO DE FECHA
-    # ==========================================
-    fecha_gestion = st.date_input(
-        "Seleccionar fecha",
-        value=datetime.today(),
-        key="filtro_gestion"
-    )
-
-    df_sede = df[df["Sede"] == st.session_state.sede].copy()
-    df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
-
-    df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
-
-    if df_filtrado.empty:
-        st.info("No hay citas para la fecha seleccionada")
-    else:
-        for i, row in df_filtrado.iterrows():
-
-            st.markdown("---")
-
-            col1, col2, col3, col4 = st.columns([4,2,3,1])
-
-            # ==========================
-            # DATOS
-            # ==========================
-            with col1:
-                st.markdown(f"""
-                **Cliente:** {row['Nombre']}  
-                **Placa:** {row['Placa']}  
-                **Modelo:** {row['Modelo']}  
-                **Servicio:** {row['TipoServicio']}  
-                **Hora:** {row['Hora']}  
-                **Estado:** {row['Estado']}
-                """)
-
-            # ==========================
-            # ASISTENCIA
-            # ==========================
-            with col2:
-                if st.button(f"✔ Asistió {row['ID']}"):
-                    df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
-                    df.to_csv(ARCHIVO_CITAS, index=False)
-                    st.rerun()
-
-                if st.button(f"❌ No asistió {row['ID']}"):
-                    df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
-                    df.to_csv(ARCHIVO_CITAS, index=False)
-                    st.rerun()
-
-            # ==========================
-            # EDITAR
-            # ==========================
-            with col3:
-                with st.expander("✏️ Editar"):
-
-                    nueva_placa = st.text_input("Placa", value=row["Placa"], key=f"edit_placa_{row['ID']}")
-                    nuevo_modelo = st.text_input("Modelo", value=row["Modelo"], key=f"edit_modelo_{row['ID']}")
-                    nuevo_nombre = st.text_input("Cliente", value=row["Nombre"], key=f"edit_nombre_{row['ID']}")
-                    nuevo_servicio = st.text_input("Servicio", value=row["TipoServicio"], key=f"edit_serv_{row['ID']}")
-                    nueva_hora = st.selectbox(
-                        "Hora",
-                        [f"{h:02d}:00" for h in range(8,19)],
-                        index=[f"{h:02d}:00" for h in range(8,19)].index(row["Hora"]),
-                        key=f"edit_hora_{row['ID']}"
-                    )
-
-                    if st.button(f"Guardar cambios {row['ID']}"):
-
-                        df.loc[df["ID"] == row["ID"], "Placa"] = nueva_placa
-                        df.loc[df["ID"] == row["ID"], "Modelo"] = nuevo_modelo
-                        df.loc[df["ID"] == row["ID"], "Nombre"] = nuevo_nombre
-                        df.loc[df["ID"] == row["ID"], "TipoServicio"] = nuevo_servicio
-                        df.loc[df["ID"] == row["ID"], "Hora"] = nueva_hora
-
+    # =====================================================
+    # TAB 2 - GESTIÓN DE CITAS
+    # =====================================================
+    with tab2:
+    
+        st.title("📋 Gestión de Citas")
+    
+        # ==========================================
+        # FILTRO DE FECHA
+        # ==========================================
+        fecha_gestion = st.date_input(
+            "Seleccionar fecha",
+            value=datetime.today(),
+            key="filtro_gestion"
+        )
+    
+        df_sede = df[df["Sede"] == st.session_state.sede].copy()
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
+    
+        df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
+    
+        if df_filtrado.empty:
+            st.info("No hay citas para la fecha seleccionada")
+        else:
+            for i, row in df_filtrado.iterrows():
+    
+                st.markdown("---")
+    
+                col1, col2, col3, col4 = st.columns([4,2,3,1])
+    
+                # ==========================
+                # DATOS
+                # ==========================
+                with col1:
+                    st.markdown(f"""
+                    **Cliente:** {row['Nombre']}  
+                    **Placa:** {row['Placa']}  
+                    **Modelo:** {row['Modelo']}  
+                    **Servicio:** {row['TipoServicio']}  
+                    **Hora:** {row['Hora']}  
+                    **Estado:** {row['Estado']}
+                    """)
+    
+                # ==========================
+                # ASISTENCIA
+                # ==========================
+                with col2:
+                    if st.button(f"✔ Asistió {row['ID']}"):
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
                         df.to_csv(ARCHIVO_CITAS, index=False)
-                        st.success("Cita actualizada correctamente")
                         st.rerun()
-
-            # ==========================
-            # ELIMINAR
-            # ==========================
-            with col4:
-                if st.button(f"🗑 {row['ID']}"):
-                    df = df[df["ID"] != row["ID"]]
-                    df.to_csv(ARCHIVO_CITAS, index=False)
-                    st.warning("Cita eliminada")
-                    st.rerun()
-
-            # ==========================
-            # REPROGRAMAR
-            # ==========================
-            with st.expander(f"🔄 Reprogramar {row['ID']}"):
-
-                nueva_fecha = st.date_input(
-                    "Nueva fecha",
-                    value=fecha_gestion,
-                    key=f"fecha_{row['ID']}"
-                )
-
-                nueva_hora = st.selectbox(
-                    "Nueva hora",
-                    [f"{h:02d}:00" for h in range(8,19)],
-                    key=f"hora_{row['ID']}"
-                )
-
-                nuevo_tecnico = st.selectbox(
-                    "Técnico",
-                    obtener_tecnicos(st.session_state.sede),
-                    key=f"tec_{row['ID']}"
-                )
-
-                if st.button(f"Guardar nueva cita {row['ID']}"):
-
-                    nuevo_id = df["ID"].max() + 1
-
-                    nueva = pd.DataFrame([{
-                        "ID": nuevo_id,
-                        "Sede": st.session_state.sede,
-                        "Fecha": str(nueva_fecha),
-                        "Hora": nueva_hora,
-                        "Tecnico": nuevo_tecnico,
-                        "Placa": row["Placa"],
-                        "Modelo": row["Modelo"],
-                        "Nombre": row["Nombre"],
-                        "Celular": row["Celular"],
-                        "TipoServicio": row["TipoServicio"],
-                        "Duracion": row["Duracion"],
-                        "Estado": "Pendiente",
-                        "Reprogramada": "Sí"
-                    }])
-
-                    df.loc[df["ID"] == row["ID"], "Estado"] = "Reprogramada"
-                    df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
-
-                    df = pd.concat([df, nueva], ignore_index=True)
-                    df.to_csv(ARCHIVO_CITAS, index=False)
-
-                    st.success("Cita reprogramada correctamente")
-                    st.rerun()
+    
+                    if st.button(f"❌ No asistió {row['ID']}"):
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.rerun()
+    
+                # ==========================
+                # EDITAR
+                # ==========================
+                with col3:
+                    with st.expander("✏️ Editar"):
+    
+                        nueva_placa = st.text_input("Placa", value=row["Placa"], key=f"edit_placa_{row['ID']}")
+                        nuevo_modelo = st.text_input("Modelo", value=row["Modelo"], key=f"edit_modelo_{row['ID']}")
+                        nuevo_nombre = st.text_input("Cliente", value=row["Nombre"], key=f"edit_nombre_{row['ID']}")
+                        nuevo_servicio = st.text_input("Servicio", value=row["TipoServicio"], key=f"edit_serv_{row['ID']}")
+                        nueva_hora = st.selectbox(
+                            "Hora",
+                            [f"{h:02d}:00" for h in range(8,19)],
+                            index=[f"{h:02d}:00" for h in range(8,19)].index(row["Hora"]),
+                            key=f"edit_hora_{row['ID']}"
+                        )
+    
+                        if st.button(f"Guardar cambios {row['ID']}"):
+    
+                            df.loc[df["ID"] == row["ID"], "Placa"] = nueva_placa
+                            df.loc[df["ID"] == row["ID"], "Modelo"] = nuevo_modelo
+                            df.loc[df["ID"] == row["ID"], "Nombre"] = nuevo_nombre
+                            df.loc[df["ID"] == row["ID"], "TipoServicio"] = nuevo_servicio
+                            df.loc[df["ID"] == row["ID"], "Hora"] = nueva_hora
+    
+                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            st.success("Cita actualizada correctamente")
+                            st.rerun()
+    
+                # ==========================
+                # ELIMINAR
+                # ==========================
+                with col4:
+                    if st.button(f"🗑 {row['ID']}"):
+                        df = df[df["ID"] != row["ID"]]
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.warning("Cita eliminada")
+                        st.rerun()
+    
+                # ==========================
+                # REPROGRAMAR
+                # ==========================
+                with st.expander(f"🔄 Reprogramar {row['ID']}"):
+    
+                    nueva_fecha = st.date_input(
+                        "Nueva fecha",
+                        value=fecha_gestion,
+                        key=f"fecha_{row['ID']}"
+                    )
+    
+                    nueva_hora = st.selectbox(
+                        "Nueva hora",
+                        [f"{h:02d}:00" for h in range(8,19)],
+                        key=f"hora_{row['ID']}"
+                    )
+    
+                    nuevo_tecnico = st.selectbox(
+                        "Técnico",
+                        obtener_tecnicos(st.session_state.sede),
+                        key=f"tec_{row['ID']}"
+                    )
+    
+                    if st.button(f"Guardar nueva cita {row['ID']}"):
+    
+                        nuevo_id = df["ID"].max() + 1
+    
+                        nueva = pd.DataFrame([{
+                            "ID": nuevo_id,
+                            "Sede": st.session_state.sede,
+                            "Fecha": str(nueva_fecha),
+                            "Hora": nueva_hora,
+                            "Tecnico": nuevo_tecnico,
+                            "Placa": row["Placa"],
+                            "Modelo": row["Modelo"],
+                            "Nombre": row["Nombre"],
+                            "Celular": row["Celular"],
+                            "TipoServicio": row["TipoServicio"],
+                            "Duracion": row["Duracion"],
+                            "Estado": "Pendiente",
+                            "Reprogramada": "Sí"
+                        }])
+    
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "Reprogramada"
+                        df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
+    
+                        df = pd.concat([df, nueva], ignore_index=True)
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+    
+                        st.success("Cita reprogramada correctamente")
+                        st.rerun()
 
     # =====================================================
     # TAB 3 - MI AVANCE
@@ -737,6 +738,7 @@ with tab2:
         colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
         colB.metric("❌ % No Show", f"{no_show_pct}%")
         colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+
 
 
 
