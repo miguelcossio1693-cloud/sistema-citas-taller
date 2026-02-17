@@ -264,22 +264,27 @@ if st.session_state.rol == "admin":
 
         st.title("📊 Resumen General por Sede")
 
-        # Si no hay datos, creamos estructura mínima
+        # ==============================
+        # CREAR / NORMALIZAR DF ADMIN
+        # ==============================
         if df.empty:
-            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha","Estado","Reprogramada"])
+            df_admin = pd.DataFrame(
+                columns=["ID","Sede","Fecha","Estado","Reprogramada"]
+            )
         else:
             df_admin = df.copy()
-        
-            # Blindaje de columnas
+
             if "Estado" not in df_admin.columns:
                 df_admin["Estado"] = "Pendiente"
-        
+
             if "Reprogramada" not in df_admin.columns:
                 df_admin["Reprogramada"] = "No"
-        
+
             df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
 
-        # Selector Año
+        # ==============================
+        # SELECTORES
+        # ==============================
         año_sel = st.selectbox(
             "Año",
             sorted(df_admin["Fecha"].dt.year.unique(), reverse=True)
@@ -287,7 +292,6 @@ if st.session_state.rol == "admin":
             key="admin_year"
         )
 
-        # Selector Mes
         mes_sel = st.selectbox(
             "Mes",
             list(range(1,13)),
@@ -296,14 +300,21 @@ if st.session_state.rol == "admin":
             key="admin_month"
         )
 
-        # Filtrado mensual
+        # ==============================
+        # FILTRADO MENSUAL
+        # ==============================
         if not df_admin.empty:
             df_mes = df_admin[
                 (df_admin["Fecha"].dt.year == año_sel) &
                 (df_admin["Fecha"].dt.month == mes_sel)
             ]
         else:
-            df_mes = pd.DataFrame(columns=["ID","Sede","Fecha"])
+            df_mes = pd.DataFrame(
+                columns=["ID","Sede","Fecha","Estado","Reprogramada"]
+            )
+
+        if "Estado" not in df_mes.columns:
+            df_mes["Estado"] = "Pendiente"
 
         # =====================================================
         # GRAFICO AVANCE POR SEDE
@@ -344,7 +355,7 @@ if st.session_state.rol == "admin":
         st.dataframe(df_grafico, use_container_width=True)
 
         # =====================================================
-        # CALENDARIOS POR SEDE (SIEMPRE VISIBLES)
+        # CALENDARIO POR SEDE
         # =====================================================
         st.divider()
         st.subheader("📅 Calendario de Agendamiento por Sede")
@@ -396,7 +407,6 @@ if st.session_state.rol == "admin":
 
             html += "</table>"
             st.markdown(html, unsafe_allow_html=True)
-
             st.divider()
 
     # =====================================================
@@ -420,7 +430,6 @@ if st.session_state.rol == "admin":
             ])
             metas.to_csv(ARCHIVO_METAS, index=False)
             st.success("Meta guardada correctamente")
-
 # =============================
 # ASESOR
 # =============================
@@ -728,6 +737,7 @@ with tab2:
         colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
         colB.metric("❌ % No Show", f"{no_show_pct}%")
         colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+
 
 
 
