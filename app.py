@@ -186,7 +186,7 @@ if st.session_state.rol == "admin":
 
     with tab2:
         st.title("Configurar Meta")
-        sede_meta = st.selectbox("Sede", SEDES)
+        sede_meta = st.selectbox("Sede", SEDES, key="meta_sede")
         nueva_meta = st.number_input("Meta mensual",0,1000,0)
 
         if st.button("Guardar Meta"):
@@ -336,3 +336,4 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
