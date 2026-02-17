@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import os
 import calendar
 from streamlit_autorefresh import st_autorefresh
+from io import BytesIO
 
 st.set_page_config(layout="wide")
 
@@ -36,6 +37,16 @@ SEDES = [
     "IQUITOS PROSPERO","IQUITOS QUIÑONES",
     "PUCALLPA","YURIMAGUAS"
 ]
+
+# =============================
+# FUNCION EXPORTAR EXCEL
+# =============================
+def generar_excel(dataframe):
+    output = BytesIO()
+    with pd.ExcelWriter(output) as writer:
+        dataframe.to_excel(writer, index=False, sheet_name='Reporte')
+    output.seek(0)
+    return output
 
 # =============================
 # TECNICOS POR SEDE
@@ -91,6 +102,44 @@ COLORES = {
 }
 
 # =============================
+# CREAR / CARGAR ARCHIVO CITAS
+# =============================
+if not os.path.exists(ARCHIVO_CITAS):
+
+    df = pd.DataFrame(columns=[
+        "ID","Sede","Fecha","Hora","Tecnico",
+        "Placa","Modelo","Nombre","Celular",
+        "TipoServicio","Duracion",
+        "Estado","Reprogramada"
+    ])
+
+    df.to_csv(ARCHIVO_CITAS,index=False)
+
+else:
+    df = pd.read_csv(ARCHIVO_CITAS)
+
+# =============================
+# NORMALIZAR COLUMNAS
+# =============================
+if "Estado" not in df.columns:
+    df["Estado"] = "Pendiente"
+
+if "Reprogramada" not in df.columns:
+    df["Reprogramada"] = "No"
+
+df["ID"] = pd.to_numeric(df["ID"], errors="coerce").fillna(0).astype(int)
+df["Duracion"] = pd.to_numeric(df["Duracion"], errors="coerce").fillna(1).astype(int)
+
+# =============================
+# CREAR / CARGAR METAS
+# =============================
+if not os.path.exists(ARCHIVO_METAS):
+    metas = pd.DataFrame(columns=["Sede","MetaMensual"])
+    metas.to_csv(ARCHIVO_METAS,index=False)
+else:
+    metas = pd.read_csv(ARCHIVO_METAS)
+
+# =============================
 # FUNCION DINAMICA
 # =============================
 def obtener_tecnicos(sede):
@@ -144,36 +193,19 @@ st.divider()
 # AUTO REFRESH SOLO PARA ASESOR
 # =============================
 if st.session_state.rol == "asesor":
-    st_autorefresh(interval=10000, key="auto_refresh")
-
-# =============================
-# ARCHIVOS
-# =============================
-if not os.path.exists(ARCHIVO_CITAS):
-    df = pd.DataFrame(columns=[
-        "ID","Sede","Fecha","Hora","Tecnico",
-        "Placa","Modelo","Nombre","Celular",
-        "TipoServicio","Duracion"
-    ])
-    df.to_csv(ARCHIVO_CITAS,index=False)
-else:
-    df = pd.read_csv(ARCHIVO_CITAS)
-
-if not os.path.exists(ARCHIVO_METAS):
-    metas = pd.DataFrame(columns=["Sede","MetaMensual"])
-    metas.to_csv(ARCHIVO_METAS,index=False)
-else:
-    metas = pd.read_csv(ARCHIVO_METAS)
-
-df["ID"] = pd.to_numeric(df["ID"], errors="coerce").fillna(0).astype(int)
-df["Duracion"] = pd.to_numeric(df["Duracion"], errors="coerce").fillna(1).astype(int)
+    st_autorefresh(interval=15000, key="auto_refresh")
 
 # =============================
 # TABLERO RESPONSIVE
 # =============================
 def mostrar_tablero(df_dia, sede):
 
+    # Mostrar solo citas pendientes
+    if "Estado" in df_dia.columns:
+        df_dia = df_dia[df_dia["Estado"] == "Pendiente"]
+
     tecnicos = obtener_tecnicos(sede)
+
     horas = [f"{h:02d}:00" for h in range(8,19)]
 
     html = "<div style='overflow-x:auto;'>"
@@ -272,7 +304,11 @@ if st.session_state.rol == "admin":
 
         for sede in SEDES:
 
-            df_sede = df_mes[df_mes["Sede"] == sede]
+            df_sede = df_mes[
+                (df_mes["Sede"] == sede) &
+                (df_mes["Estado"].isin(["Pendiente","Asistió"]))
+            ]
+
             total_citas = len(df_sede)
 
             meta_sede = 0
@@ -309,7 +345,10 @@ if st.session_state.rol == "admin":
 
             st.markdown(f"### 🏢 {sede}")
 
-            df_sede_cal = df_mes[df_mes["Sede"] == sede]
+            df_sede_cal = df_mes[
+                (df_mes["Sede"] == sede) &
+                (df_mes["Estado"].isin(["Pendiente","Asistió"]))
+            ]
 
             conteo = (
                 df_sede_cal
@@ -408,8 +447,13 @@ else:
                 st.warning("Completa todos los datos obligatorios")
                 st.stop()
 
-            df_dia = df[(df["Sede"]==st.session_state.sede) &
-                        (df["Fecha"]==str(fecha))]
+            df_temp = df.copy()
+            df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"]).dt.date
+            
+            df_dia = df_temp[
+                (df_temp["Sede"] == st.session_state.sede) &
+                (df_temp["Fecha"] == fecha)
+            ]
 
             inicio_nuevo = datetime.strptime(hora,"%H:%M")
             fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
@@ -458,24 +502,31 @@ else:
     # TAB 2 - GESTIÓN DE CITAS
     # =====================================================
     with tab2:
-
+    
         st.title("📋 Gestión de Citas")
-
+    
         hoy = datetime.today().date()
-
-        df_sede = df[df["Sede"]==st.session_state.sede].copy()
+    
+        df_sede = df[df["Sede"] == st.session_state.sede].copy()
         df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
-
-        df_hoy = df_sede[df_sede["Fecha"] == hoy]
-
+    
+        # SOLO citas pendientes del día
+        df_hoy = df_sede[
+            (df_sede["Fecha"] == hoy) &
+            (df_sede["Estado"] == "Pendiente")
+        ]
+    
         if df_hoy.empty:
-            st.info("No hay citas para hoy")
+            st.info("No hay citas pendientes para hoy")
         else:
             for i, row in df_hoy.iterrows():
-
+    
                 st.markdown("---")
                 col1, col2, col3 = st.columns([4,2,2])
-
+    
+                # ==========================================
+                # DATOS DE LA CITA
+                # ==========================================
                 with col1:
                     st.markdown(f"""
                     **Cliente:** {row['Nombre']}  
@@ -484,62 +535,76 @@ else:
                     **Servicio:** {row['TipoServicio']}  
                     **Hora:** {row['Hora']}
                     """)
-
+    
+                # ==========================================
+                # BOTONES ASISTENCIA
+                # ==========================================
                 with col2:
                     if st.button(f"✔ Asistió {row['ID']}"):
-                        df.loc[df["ID"]==row["ID"],"Estado"]="Asistió"
-                        df.to_csv(ARCHIVO_CITAS,index=False)
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.success("Marcado como Asistió")
                         st.rerun()
-
+    
                     if st.button(f"❌ No asistió {row['ID']}"):
-                        df.loc[df["ID"]==row["ID"],"Estado"]="No asistió"
-                        df.to_csv(ARCHIVO_CITAS,index=False)
+                        df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.warning("Marcado como No asistió")
                         st.rerun()
-
+    
+                # ==========================================
+                # REPROGRAMAR
+                # ==========================================
                 with col3:
                     with st.expander("🔄 Reprogramar"):
-
+    
                         nueva_fecha = st.date_input(
                             "Nueva fecha",
                             min_value=hoy,
                             key=f"fecha_{row['ID']}"
                         )
-
+    
                         nueva_hora = st.selectbox(
                             "Nueva hora",
                             [f"{h:02d}:00" for h in range(8,19)],
                             key=f"hora_{row['ID']}"
                         )
-
+    
                         nuevo_tecnico = st.selectbox(
                             "Técnico",
                             obtener_tecnicos(st.session_state.sede),
                             key=f"tec_{row['ID']}"
                         )
-
+    
                         if st.button(f"Guardar nueva cita {row['ID']}"):
-
-                            nuevo_id = df["ID"].max()+1
-
+    
+                            nuevo_id = df["ID"].max() + 1
+    
                             nueva = pd.DataFrame([{
-                                "ID":nuevo_id,
-                                "Sede":st.session_state.sede,
-                                "Fecha":str(nueva_fecha),
-                                "Hora":nueva_hora,
-                                "Tecnico":nuevo_tecnico,
-                                "Placa":row["Placa"],
-                                "Modelo":row["Modelo"],
-                                "Nombre":row["Nombre"],
-                                "Celular":row["Celular"],
-                                "TipoServicio":row["TipoServicio"],
-                                "Duracion":row["Duracion"],
-                                "Estado":"Pendiente",
-                                "Reprogramada":"Sí"
+                                "ID": nuevo_id,
+                                "Sede": st.session_state.sede,
+                                "Fecha": str(nueva_fecha),
+                                "Hora": nueva_hora,
+                                "Tecnico": nuevo_tecnico,
+                                "Placa": row["Placa"],
+                                "Modelo": row["Modelo"],
+                                "Nombre": row["Nombre"],
+                                "Celular": row["Celular"],
+                                "TipoServicio": row["TipoServicio"],
+                                "Duracion": row["Duracion"],
+                                "Estado": "Pendiente",
+                                "Reprogramada": "Sí"
                             }])
-
-                            df.loc[df["ID"]==row["ID"],"Estado"]="No asistió"
-                            df = pd.concat([df,nueva],ignore_index=True)
-                            df.to_csv(ARCHIVO_CITAS,index=False)
+    
+                            # Marcar original como reprogramada
+                            df.loc[df["ID"] == row["ID"], "Estado"] = "Reprogramada"
+                            df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
+    
+                            # Agregar nueva cita
+                            df = pd.concat([df, nueva], ignore_index=True)
+                            df.to_csv(ARCHIVO_CITAS, index=False)
+    
+                            st.success("Cita reprogramada correctamente")
                             st.rerun()
 
     # =====================================================
@@ -547,39 +612,73 @@ else:
     # =====================================================
     with tab3:
         st.title("Mi Avance")
-
-        df_sede = df[df["Sede"]==st.session_state.sede].copy()
+    
+        df_sede = df[df["Sede"] == st.session_state.sede].copy()
         df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
-
-        año_sel = st.selectbox("Año",
+    
+        año_sel = st.selectbox(
+            "Año",
             sorted(df_sede["Fecha"].dt.year.unique(), reverse=True)
-            if not df_sede.empty else [datetime.today().year])
-
-        mes_sel = st.selectbox("Mes",
+            if not df_sede.empty else [datetime.today().year]
+        )
+    
+        mes_sel = st.selectbox(
+            "Mes",
             list(range(1,13)),
             index=datetime.today().month-1,
-            format_func=lambda x: calendar.month_name[x])
-
+            format_func=lambda x: calendar.month_name[x]
+        )
+    
         df_mes = df_sede[
-            (df_sede["Fecha"].dt.month==mes_sel) &
-            (df_sede["Fecha"].dt.year==año_sel)
+            (df_sede["Fecha"].dt.month == mes_sel) &
+            (df_sede["Fecha"].dt.year == año_sel)
         ]
-
-        total_citas = len(df_mes)
-
+    
+        # ================================
+        # FILTRAR CITAS VÁLIDAS PARA META
+        # ================================
+        df_validas = df_mes[
+            df_mes["Estado"].isin(["Pendiente","Asistió"])
+        ]
+    
+        total_citas = len(df_validas)
+    
+        # ================================
+        # META
+        # ================================
         meta_sede = 0
         fila_meta = metas[metas["Sede"] == st.session_state.sede]
         if not fila_meta.empty:
             meta_sede = int(fila_meta["MetaMensual"].values[0])
-
-        porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede>0 else 0
-
-        col1,col2,col3 = st.columns(3)
-        col1.metric("📅 Citas del Mes", total_citas)
+    
+        porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede > 0 else 0
+    
+        col1, col2, col3 = st.columns(3)
+        col1.metric("📅 Citas válidas del Mes", total_citas)
         col2.metric("🎯 Meta Mensual", meta_sede)
         col3.metric("📈 Avance", f"{porcentaje}%")
-
-        if meta_sede>0:
+    
+        if meta_sede > 0:
             st.progress(min(total_citas/meta_sede,1.0))
-
+    
+        # ================================
+        # INDICADORES ADICIONALES
+        # ================================
+        st.divider()
+        st.subheader("📊 Indicadores del Mes")
+    
+        total_mes = len(df_mes)
+        asistidas = len(df_mes[df_mes["Estado"] == "Asistió"])
+        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
+    
+        colA, colB, colC = st.columns(3)
+    
+        asistencia_pct = round((asistidas/total_mes)*100,1) if total_mes > 0 else 0
+        no_show_pct = round((no_show/total_mes)*100,1) if total_mes > 0 else 0
+        reprog_pct = round((reprogramadas/total_mes)*100,1) if total_mes > 0 else 0
+    
+        colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
+        colB.metric("❌ % No Show", f"{no_show_pct}%")
+        colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
 
