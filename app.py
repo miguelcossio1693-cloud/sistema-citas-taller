@@ -149,15 +149,26 @@ if st.session_state.rol == "asesor":
 # =============================
 # ARCHIVOS
 # =============================
+
+COLUMNAS_CITAS = [
+    "ID","Sede","Fecha","Hora","Tecnico",
+    "Placa","Modelo","Nombre","Celular",
+    "TipoServicio","Duracion","Estado"
+]
+
 if not os.path.exists(ARCHIVO_CITAS):
-    df = pd.DataFrame(columns=[
-        "ID","Sede","Fecha","Hora","Tecnico",
-        "Placa","Modelo","Nombre","Celular",
-        "TipoServicio","Duracion"
-    ])
-    df.to_csv(ARCHIVO_CITAS,index=False)
+
+    df = pd.DataFrame(columns=COLUMNAS_CITAS)
+    df.to_csv(ARCHIVO_CITAS, index=False)
+
 else:
+
     df = pd.read_csv(ARCHIVO_CITAS)
+
+    # 🔹 Si el archivo ya existía pero no tenía la columna Estado
+    if "Estado" not in df.columns:
+        df["Estado"] = "PROGRAMADA"
+        df.to_csv(ARCHIVO_CITAS, index=False)
 
 if not os.path.exists(ARCHIVO_METAS):
     metas = pd.DataFrame(columns=["Sede","MetaMensual"])
@@ -165,8 +176,10 @@ if not os.path.exists(ARCHIVO_METAS):
 else:
     metas = pd.read_csv(ARCHIVO_METAS)
 
+# 🔹 Conversión segura de tipos
 df["ID"] = pd.to_numeric(df["ID"], errors="coerce").fillna(0).astype(int)
 df["Duracion"] = pd.to_numeric(df["Duracion"], errors="coerce").fillna(1).astype(int)
+
 
 # =============================
 # TABLERO RESPONSIVE
@@ -516,6 +529,7 @@ else:
 
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
+
 
 
 
