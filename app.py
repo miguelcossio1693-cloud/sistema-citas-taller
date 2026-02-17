@@ -266,9 +266,17 @@ if st.session_state.rol == "admin":
 
         # Si no hay datos, creamos estructura mínima
         if df.empty:
-            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha"])
+            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha","Estado","Reprogramada"])
         else:
             df_admin = df.copy()
+        
+            # Blindaje de columnas
+            if "Estado" not in df_admin.columns:
+                df_admin["Estado"] = "Pendiente"
+        
+            if "Reprogramada" not in df_admin.columns:
+                df_admin["Reprogramada"] = "No"
+        
             df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
 
         # Selector Año
@@ -720,6 +728,7 @@ with tab2:
         colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
         colB.metric("❌ % No Show", f"{no_show_pct}%")
         colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+
 
 
 
