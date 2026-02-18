@@ -255,30 +255,25 @@ def mostrar_tablero(df_dia, sede):
 # =============================
 if st.session_state.rol == "admin":
 
-    tab1, tab2 = st.tabs(["📊 Resumen","🎯 Configurar Meta"])
+    tab1, tab2 = st.tabs(["📊 Resumen Ejecutivo","🎯 Configurar Meta"])
 
     # =====================================================
-    # TAB 1 - RESUMEN GENERAL
+    # TAB 1 - RESUMEN EJECUTIVO
     # =====================================================
     with tab1:
 
-        st.title("📊 Resumen General por Sede")
+        st.title("📊 Dashboard Ejecutivo General")
 
         # ==============================
-        # CREAR / NORMALIZAR DF ADMIN
+        # NORMALIZAR DATA
         # ==============================
         if df.empty:
-            df_admin = pd.DataFrame(
-                columns=["ID","Sede","Fecha","Estado","Reprogramada"]
-            )
+            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha","Estado"])
         else:
             df_admin = df.copy()
 
             if "Estado" not in df_admin.columns:
                 df_admin["Estado"] = "Pendiente"
-
-            if "Reprogramada" not in df_admin.columns:
-                df_admin["Reprogramada"] = "No"
 
             df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
 
@@ -300,89 +295,90 @@ if st.session_state.rol == "admin":
             key="admin_month"
         )
 
-        # ==============================
-        # FILTRADO MENSUAL
-        # ==============================
-        if not df_admin.empty:
-            df_mes = df_admin[
-                (df_admin["Fecha"].dt.year == año_sel) &
-                (df_admin["Fecha"].dt.month == mes_sel)
-            ]
-        else:
-            df_mes = pd.DataFrame(
-                columns=["ID","Sede","Fecha","Estado","Reprogramada"]
-            )
-
-        if "Estado" not in df_mes.columns:
-            df_mes["Estado"] = "Pendiente"
+        df_mes = df_admin[
+            (df_admin["Fecha"].dt.year == año_sel) &
+            (df_admin["Fecha"].dt.month == mes_sel)
+        ]
 
         # =====================================================
-        # KPI AVANCE POR SEDE
+        # KPIs GLOBALES
         # =====================================================
-        datos_grafico = []
+        st.subheader("🌎 Indicadores Globales")
+
+        total_mes = len(df_mes)
+        efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
+        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
+
+        efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes > 0 else 0
+        no_show_pct = round((no_show/total_mes)*100,1) if total_mes > 0 else 0
+
+        c1,c2,c3,c4 = st.columns(4)
+        c1.metric("📅 Total Citas", total_mes)
+        c2.metric("✅ Efectivas", efectivas)
+        c3.metric("❌ No Show", no_show)
+        c4.metric("🔄 Reprogramadas", reprogramadas)
+
+        st.divider()
+
+        cA,cB = st.columns(2)
+        cA.metric("🎯 % Efectividad Global", f"{efectividad_pct}%")
+        cB.metric("⚠ % No Show Global", f"{no_show_pct}%")
+
+        st.divider()
+
+        # =====================================================
+        # RESUMEN EJECUTIVO POR SEDE
+        # =====================================================
+        st.subheader("🏢 Resumen Ejecutivo por Sede")
 
         for sede in SEDES:
 
-            df_sede = df_mes[
-                (df_mes["Sede"] == sede) &
-                (df_mes["Estado"].isin(["Pendiente","Asistió"]))
-            ]
+            df_sede = df_mes[df_mes["Sede"] == sede]
 
-            total_citas = len(df_sede)
+            total_sede = len(df_sede)
+            efectivas_sede = len(df_sede[df_sede["Estado"] == "Asistió"])
+            no_show_sede = len(df_sede[df_sede["Estado"] == "No asistió"])
+            reprog_sede = len(df_sede[df_sede["Estado"] == "Reprogramada"])
 
+            efectividad_sede_pct = round((efectivas_sede/total_sede)*100,1) if total_sede > 0 else 0
+
+            # Meta
             meta_sede = 0
             fila_meta = metas[metas["Sede"] == sede]
             if not fila_meta.empty:
                 meta_sede = int(fila_meta["MetaMensual"].values[0])
 
-            porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede>0 else 0
+            citas_validas = len(df_sede[df_sede["Estado"].isin(["Pendiente","Asistió"])])
+            avance_meta_pct = round((citas_validas/meta_sede)*100,1) if meta_sede > 0 else 0
 
-            datos_grafico.append({
-                "Sede": sede,
-                "Citas": total_citas,
-                "Meta": meta_sede,
-                "Avance %": porcentaje
-            })
+            # Semáforo meta
+            if avance_meta_pct >= 100:
+                semaforo = "🟢"
+            elif avance_meta_pct >= 70:
+                semaforo = "🟡"
+            else:
+                semaforo = "🔴"
 
-        df_grafico = pd.DataFrame(datos_grafico)
+            st.markdown(f"### {semaforo} {sede}")
 
-        st.subheader("📈 Avance por Sede (%)")
-        st.divider()
+            col1,col2,col3,col4,col5 = st.columns(5)
 
-        cols = st.columns(4)
+            col1.metric("📅 Total", total_sede)
+            col2.metric("✅ Efectivas", efectivas_sede)
+            col3.metric("❌ No Show", no_show_sede)
+            col4.metric("🎯 % Efectividad", f"{efectividad_sede_pct}%")
+            col5.metric("📈 Avance Meta", f"{avance_meta_pct}%")
 
-        for i, row in df_grafico.iterrows():
+            if meta_sede > 0:
+                st.progress(min(citas_validas/meta_sede,1.0))
 
-            col = cols[i % 4]
-
-            with col:
-
-                avance = row["Avance %"]
-
-                # Semáforo automático
-                if avance >= 100:
-                    emoji = "🟢"
-                elif avance >= 70:
-                    emoji = "🟡"
-                else:
-                    emoji = "🔴"
-
-                st.metric(
-                    label=f"{emoji} {row['Sede']}",
-                    value=f"{avance}%",
-                    delta=f"{row['Citas']} / {row['Meta']}"
-                )
-
-        st.divider()
-
-        st.subheader("📋 Detalle por Sede")
-        st.dataframe(df_grafico, use_container_width=True)
+            st.divider()
 
         # =====================================================
         # CALENDARIO POR SEDE
         # =====================================================
-        st.divider()
-        st.subheader("📅 Calendario de Agendamiento por Sede")
+        st.subheader("📅 Calendario de Agendamiento")
 
         for sede in SEDES:
 
@@ -423,8 +419,7 @@ if st.session_state.rol == "admin":
                         else:
                             color = "#CB4335"
 
-                        html += "<td style='padding:10px;border:1px solid #ddd;font-weight:bold;"
-                        html += f"color:{color};font-size:14px;'>"
+                        html += f"<td style='padding:8px;border:1px solid #ddd;color:{color};font-weight:bold;'>"
                         html += f"{dia}<br><span style='font-size:11px;'>{cant} citas</span></td>"
 
                 html += "</tr>"
@@ -462,389 +457,390 @@ else:
 
     tab1, tab2, tab3 = st.tabs(["📅 Agendar","📋 Gestión de Citas","📈 Mi Avance"])
 
-# =====================================================
-# TAB 1 - AGENDAR
-# =====================================================
-with tab1:
-    st.title("Agendar Cita")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fecha = st.date_input("Fecha", min_value=datetime.today())
-        hora = st.selectbox("Hora inicio",[f"{h:02d}:00" for h in range(8,19)])
-        duracion = st.number_input("Duración (horas)",1,8,1)
-        tecnico = st.selectbox("Técnico", obtener_tecnicos(st.session_state.sede))
-
-    with col2:
-        placa = st.text_input("Placa")
-        modelo = st.text_input("Modelo")
-        nombre = st.text_input("Nombres y apellidos")
-        celular = st.text_input("Celular")
-        servicio = st.text_input("Tipo de Servicio")
-
-    if st.button("Guardar"):
-
-        if not placa or not modelo or not nombre or not servicio:
-            st.warning("Completa todos los datos obligatorios")
-            st.stop()
-
-        df_temp = df.copy()
-        df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"]).dt.date
-
-        # 🔥 SOLO VALIDAR CITAS ACTIVAS
-        df_dia = df_temp[
-            (df_temp["Sede"] == st.session_state.sede) &
-            (df_temp["Fecha"] == fecha) &
-            (df_temp["Estado"].isin(["Pendiente","Asistió"]))
-        ]
-
-        inicio_nuevo = datetime.strptime(hora,"%H:%M")
-        fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
-
-        conflicto=False
-
-        for _,row in df_dia.iterrows():
-            if row["Tecnico"]==tecnico:
-                inicio_exist = datetime.strptime(row["Hora"],"%H:%M")
-                fin_exist = inicio_exist + timedelta(hours=row["Duracion"])
-                if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
-                    conflicto=True
-                    break
-
-        if conflicto:
-            st.error("Conflicto de horario con otra cita activa")
+    # =====================================================
+    # TAB 1 - AGENDAR
+    # =====================================================
+    with tab1:
+        st.title("Agendar Cita")
+    
+        col1, col2 = st.columns(2)
+    
+        with col1:
+            fecha = st.date_input("Fecha", min_value=datetime.today())
+            hora = st.selectbox("Hora inicio",[f"{h:02d}:00" for h in range(8,19)])
+            duracion = st.number_input("Duración (horas)",1,8,1)
+            tecnico = st.selectbox("Técnico", obtener_tecnicos(st.session_state.sede))
+    
+        with col2:
+            placa = st.text_input("Placa")
+            modelo = st.text_input("Modelo")
+            nombre = st.text_input("Nombres y apellidos")
+            celular = st.text_input("Celular")
+            servicio = st.text_input("Tipo de Servicio")
+    
+        if st.button("Guardar"):
+    
+            if not placa or not modelo or not nombre or not servicio:
+                st.warning("Completa todos los datos obligatorios")
+                st.stop()
+    
+            df_temp = df.copy()
+            df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"]).dt.date
+    
+            # 🔥 SOLO VALIDAR CITAS ACTIVAS
+            df_dia = df_temp[
+                (df_temp["Sede"] == st.session_state.sede) &
+                (df_temp["Fecha"] == fecha) &
+                (df_temp["Estado"].isin(["Pendiente","Asistió"]))
+            ]
+    
+            inicio_nuevo = datetime.strptime(hora,"%H:%M")
+            fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
+    
+            conflicto=False
+    
+            for _,row in df_dia.iterrows():
+                if row["Tecnico"]==tecnico:
+                    inicio_exist = datetime.strptime(row["Hora"],"%H:%M")
+                    fin_exist = inicio_exist + timedelta(hours=row["Duracion"])
+                    if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
+                        conflicto=True
+                        break
+    
+            if conflicto:
+                st.error("Conflicto de horario con otra cita activa")
+            else:
+                nuevo_id = df["ID"].max()+1 if not df.empty else 1
+    
+                nueva = pd.DataFrame([{
+                    "ID":nuevo_id,
+                    "Sede":st.session_state.sede,
+                    "Fecha":str(fecha),
+                    "Hora":hora,
+                    "Tecnico":tecnico,
+                    "Placa":placa,
+                    "Modelo":modelo,
+                    "Nombre":nombre,
+                    "Celular":celular,
+                    "TipoServicio":servicio,
+                    "Duracion":duracion,
+                    "Estado":"Pendiente",
+                    "Reprogramada":"No"
+                }])
+    
+                df = pd.concat([df,nueva],ignore_index=True)
+                df.to_csv(ARCHIVO_CITAS,index=False)
+    
+                st.success("Cita registrada correctamente")
+                st.rerun()
+    
+        # 🔥 TABLERO SOLO CON CITAS ACTIVAS
+        mostrar_tablero(
+            df[
+                (df["Sede"]==st.session_state.sede) &
+                (df["Fecha"]==str(fecha)) &
+                (df["Estado"].isin(["Pendiente","Asistió"]))
+            ],
+            st.session_state.sede
+        )
+    
+     # =====================================================
+    # TAB 2 - GESTIÓN DE CITAS
+    # =====================================================
+    with tab2:
+    
+        st.title("📋 Gestión de Citas")
+    
+        fecha_gestion = st.date_input(
+            "Seleccionar fecha",
+            value=datetime.today(),
+            key="filtro_gestion"
+        )
+    
+        df_sede = df[df["Sede"] == st.session_state.sede].copy()
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
+    
+        df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
+    
+        if df_filtrado.empty:
+            st.info("No hay citas para la fecha seleccionada")
         else:
-            nuevo_id = df["ID"].max()+1 if not df.empty else 1
-
-            nueva = pd.DataFrame([{
-                "ID":nuevo_id,
-                "Sede":st.session_state.sede,
-                "Fecha":str(fecha),
-                "Hora":hora,
-                "Tecnico":tecnico,
-                "Placa":placa,
-                "Modelo":modelo,
-                "Nombre":nombre,
-                "Celular":celular,
-                "TipoServicio":servicio,
-                "Duracion":duracion,
-                "Estado":"Pendiente",
-                "Reprogramada":"No"
-            }])
-
-            df = pd.concat([df,nueva],ignore_index=True)
-            df.to_csv(ARCHIVO_CITAS,index=False)
-
-            st.success("Cita registrada correctamente")
-            st.rerun()
-
-    # 🔥 TABLERO SOLO CON CITAS ACTIVAS
-    mostrar_tablero(
-        df[
-            (df["Sede"]==st.session_state.sede) &
-            (df["Fecha"]==str(fecha)) &
-            (df["Estado"].isin(["Pendiente","Asistió"]))
-        ],
-        st.session_state.sede
-    )
-
- # =====================================================
-# TAB 2 - GESTIÓN DE CITAS
-# =====================================================
-with tab2:
-
-    st.title("📋 Gestión de Citas")
-
-    fecha_gestion = st.date_input(
-        "Seleccionar fecha",
-        value=datetime.today(),
-        key="filtro_gestion"
-    )
-
-    df_sede = df[df["Sede"] == st.session_state.sede].copy()
-    df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
-
-    df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
-
-    if df_filtrado.empty:
-        st.info("No hay citas para la fecha seleccionada")
-    else:
-        for i, row in df_filtrado.iterrows():
-
-            st.markdown("---")
-
-            col1, col2, col3, col4 = st.columns([4,2,3,1])
-
-            # ==========================
-            # DATOS
-            # ==========================
-            with col1:
-                st.markdown(f"""
-                **Cliente:** {row['Nombre']}  
-                **Celular:** {row['Celular']}  
-                **Modelo:** {row['Modelo']}  
-                **Servicio:** {row['TipoServicio']}  
-                **Hora:** {row['Hora']}  
-                **Estado:** {row['Estado']}
-                """)
-
-            # =====================================================
-            # SOLO SI ESTÁ PENDIENTE
-            # =====================================================
-            if row["Estado"] == "Pendiente":
-
+            for i, row in df_filtrado.iterrows():
+    
+                st.markdown("---")
+    
+                col1, col2, col3, col4 = st.columns([4,2,3,1])
+    
                 # ==========================
-                # ASISTENCIA
+                # DATOS
                 # ==========================
-                with col2:
-                    if st.button(f"✔ Asistió {row['ID']}"):
-                        df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
-                        df.to_csv(ARCHIVO_CITAS, index=False)
-                        st.rerun()
-
-                    if st.button(f"❌ No asistió {row['ID']}"):
-                        df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
-                        df.to_csv(ARCHIVO_CITAS, index=False)
-                        st.rerun()
-
-                # ==========================
-                # EDITAR
-                # ==========================
-                with col3:
-                    with st.expander("✏️ Editar"):
-
-                        nueva_placa = st.text_input("Placa", value=row["Placa"], key=f"edit_placa_{row['ID']}")
-                        nuevo_modelo = st.text_input("Modelo", value=row["Modelo"], key=f"edit_modelo_{row['ID']}")
-                        nuevo_nombre = st.text_input("Cliente", value=row["Nombre"], key=f"edit_nombre_{row['ID']}")
-                        nuevo_servicio = st.text_input("Servicio", value=row["TipoServicio"], key=f"edit_serv_{row['ID']}")
-                        nueva_hora = st.selectbox(
-                            "Hora",
-                            [f"{h:02d}:00" for h in range(8,19)],
-                            index=[f"{h:02d}:00" for h in range(8,19)].index(row["Hora"]),
-                            key=f"edit_hora_{row['ID']}"
+                with col1:
+                    st.markdown(f"""
+                    **Cliente:** {row['Nombre']}  
+                    **Celular:** {row['Celular']}  
+                    **Modelo:** {row['Modelo']}  
+                    **Servicio:** {row['TipoServicio']}  
+                    **Hora:** {row['Hora']}  
+                    **Estado:** {row['Estado']}
+                    """)
+    
+                # =====================================================
+                # SOLO SI ESTÁ PENDIENTE
+                # =====================================================
+                if row["Estado"] == "Pendiente":
+    
+                    # ==========================
+                    # ASISTENCIA
+                    # ==========================
+                    with col2:
+                        if st.button(f"✔ Asistió {row['ID']}"):
+                            df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
+                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            st.rerun()
+    
+                        if st.button(f"❌ No asistió {row['ID']}"):
+                            df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
+                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            st.rerun()
+    
+                    # ==========================
+                    # EDITAR
+                    # ==========================
+                    with col3:
+                        with st.expander("✏️ Editar"):
+    
+                            nueva_placa = st.text_input("Placa", value=row["Placa"], key=f"edit_placa_{row['ID']}")
+                            nuevo_modelo = st.text_input("Modelo", value=row["Modelo"], key=f"edit_modelo_{row['ID']}")
+                            nuevo_nombre = st.text_input("Cliente", value=row["Nombre"], key=f"edit_nombre_{row['ID']}")
+                            nuevo_servicio = st.text_input("Servicio", value=row["TipoServicio"], key=f"edit_serv_{row['ID']}")
+                            nueva_hora = st.selectbox(
+                                "Hora",
+                                [f"{h:02d}:00" for h in range(8,19)],
+                                index=[f"{h:02d}:00" for h in range(8,19)].index(row["Hora"]),
+                                key=f"edit_hora_{row['ID']}"
+                            )
+    
+                            if st.button(f"Guardar cambios {row['ID']}"):
+    
+                                df_temp_edit = df.copy()
+                                df_temp_edit["Fecha"] = pd.to_datetime(df_temp_edit["Fecha"]).dt.date
+    
+                                df_conflicto = df_temp_edit[
+                                    (df_temp_edit["Sede"] == st.session_state.sede) &
+                                    (df_temp_edit["Fecha"] == fecha_gestion) &
+                                    (df_temp_edit["Tecnico"] == row["Tecnico"]) &
+                                    (df_temp_edit["Estado"].isin(["Pendiente","Asistió"])) &
+                                    (df_temp_edit["ID"] != row["ID"])
+                                ]
+    
+                                conflicto = False
+                                inicio_nuevo = datetime.strptime(nueva_hora,"%H:%M")
+                                fin_nuevo = inicio_nuevo + timedelta(hours=row["Duracion"])
+    
+                                for _, r in df_conflicto.iterrows():
+                                    inicio_exist = datetime.strptime(r["Hora"],"%H:%M")
+                                    fin_exist = inicio_exist + timedelta(hours=r["Duracion"])
+    
+                                    if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
+                                        conflicto = True
+                                        break
+    
+                                if conflicto:
+                                    st.error("Conflicto de horario con otra cita activa")
+                                else:
+                                    df.loc[df["ID"] == row["ID"], "Placa"] = nueva_placa
+                                    df.loc[df["ID"] == row["ID"], "Modelo"] = nuevo_modelo
+                                    df.loc[df["ID"] == row["ID"], "Nombre"] = nuevo_nombre
+                                    df.loc[df["ID"] == row["ID"], "TipoServicio"] = nuevo_servicio
+                                    df.loc[df["ID"] == row["ID"], "Hora"] = nueva_hora
+    
+                                    df.to_csv(ARCHIVO_CITAS, index=False)
+                                    st.success("Cita actualizada correctamente")
+                                    st.rerun()
+    
+                    # ==========================
+                    # ELIMINAR
+                    # ==========================
+                    with col4:
+                        if st.button(f"🗑 {row['ID']}"):
+                            df = df[df["ID"] != row["ID"]]
+                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            st.warning("Cita eliminada")
+                            st.rerun()
+    
+                    # ==========================
+                    # REPROGRAMAR
+                    # ==========================
+                    with st.expander(f"🔄 Reprogramar {row['ID']}"):
+    
+                        nueva_fecha = st.date_input(
+                            "Nueva fecha",
+                            value=fecha_gestion,
+                            key=f"fecha_{row['ID']}"
                         )
-
-                        if st.button(f"Guardar cambios {row['ID']}"):
-
-                            df_temp_edit = df.copy()
-                            df_temp_edit["Fecha"] = pd.to_datetime(df_temp_edit["Fecha"]).dt.date
-
-                            df_conflicto = df_temp_edit[
-                                (df_temp_edit["Sede"] == st.session_state.sede) &
-                                (df_temp_edit["Fecha"] == fecha_gestion) &
-                                (df_temp_edit["Tecnico"] == row["Tecnico"]) &
-                                (df_temp_edit["Estado"].isin(["Pendiente","Asistió"])) &
-                                (df_temp_edit["ID"] != row["ID"])
+    
+                        nueva_hora = st.selectbox(
+                            "Nueva hora",
+                            [f"{h:02d}:00" for h in range(8,19)],
+                            key=f"hora_{row['ID']}"
+                        )
+    
+                        nuevo_tecnico = st.selectbox(
+                            "Técnico",
+                            obtener_tecnicos(st.session_state.sede),
+                            key=f"tec_{row['ID']}"
+                        )
+    
+                        if st.button(f"Guardar nueva cita {row['ID']}"):
+    
+                            df_temp_reprog = df.copy()
+                            df_temp_reprog["Fecha"] = pd.to_datetime(df_temp_reprog["Fecha"]).dt.date
+    
+                            df_conflicto = df_temp_reprog[
+                                (df_temp_reprog["Sede"] == st.session_state.sede) &
+                                (df_temp_reprog["Fecha"] == nueva_fecha) &
+                                (df_temp_reprog["Tecnico"] == nuevo_tecnico) &
+                                (df_temp_reprog["Estado"].isin(["Pendiente","Asistió"]))
                             ]
-
+    
                             conflicto = False
                             inicio_nuevo = datetime.strptime(nueva_hora,"%H:%M")
                             fin_nuevo = inicio_nuevo + timedelta(hours=row["Duracion"])
-
+    
                             for _, r in df_conflicto.iterrows():
                                 inicio_exist = datetime.strptime(r["Hora"],"%H:%M")
                                 fin_exist = inicio_exist + timedelta(hours=r["Duracion"])
-
+    
                                 if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
                                     conflicto = True
                                     break
-
+    
                             if conflicto:
                                 st.error("Conflicto de horario con otra cita activa")
                             else:
-                                df.loc[df["ID"] == row["ID"], "Placa"] = nueva_placa
-                                df.loc[df["ID"] == row["ID"], "Modelo"] = nuevo_modelo
-                                df.loc[df["ID"] == row["ID"], "Nombre"] = nuevo_nombre
-                                df.loc[df["ID"] == row["ID"], "TipoServicio"] = nuevo_servicio
-                                df.loc[df["ID"] == row["ID"], "Hora"] = nueva_hora
-
+                                nuevo_id = df["ID"].max() + 1
+    
+                                nueva = pd.DataFrame([{
+                                    "ID": nuevo_id,
+                                    "Sede": st.session_state.sede,
+                                    "Fecha": str(nueva_fecha),
+                                    "Hora": nueva_hora,
+                                    "Tecnico": nuevo_tecnico,
+                                    "Placa": row["Placa"],
+                                    "Modelo": row["Modelo"],
+                                    "Nombre": row["Nombre"],
+                                    "Celular": row["Celular"],
+                                    "TipoServicio": row["TipoServicio"],
+                                    "Duracion": row["Duracion"],
+                                    "Estado": "Pendiente",
+                                    "Reprogramada": "Sí"
+                                }])
+    
+                                df.loc[df["ID"] == row["ID"], "Estado"] = "Reprogramada"
+                                df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
+    
+                                df = pd.concat([df, nueva], ignore_index=True)
                                 df.to_csv(ARCHIVO_CITAS, index=False)
-                                st.success("Cita actualizada correctamente")
+    
+                                st.success("Cita reprogramada correctamente")
                                 st.rerun()
-
-                # ==========================
-                # ELIMINAR
-                # ==========================
-                with col4:
-                    if st.button(f"🗑 {row['ID']}"):
-                        df = df[df["ID"] != row["ID"]]
-                        df.to_csv(ARCHIVO_CITAS, index=False)
-                        st.warning("Cita eliminada")
-                        st.rerun()
-
-                # ==========================
-                # REPROGRAMAR
-                # ==========================
-                with st.expander(f"🔄 Reprogramar {row['ID']}"):
-
-                    nueva_fecha = st.date_input(
-                        "Nueva fecha",
-                        value=fecha_gestion,
-                        key=f"fecha_{row['ID']}"
-                    )
-
-                    nueva_hora = st.selectbox(
-                        "Nueva hora",
-                        [f"{h:02d}:00" for h in range(8,19)],
-                        key=f"hora_{row['ID']}"
-                    )
-
-                    nuevo_tecnico = st.selectbox(
-                        "Técnico",
-                        obtener_tecnicos(st.session_state.sede),
-                        key=f"tec_{row['ID']}"
-                    )
-
-                    if st.button(f"Guardar nueva cita {row['ID']}"):
-
-                        df_temp_reprog = df.copy()
-                        df_temp_reprog["Fecha"] = pd.to_datetime(df_temp_reprog["Fecha"]).dt.date
-
-                        df_conflicto = df_temp_reprog[
-                            (df_temp_reprog["Sede"] == st.session_state.sede) &
-                            (df_temp_reprog["Fecha"] == nueva_fecha) &
-                            (df_temp_reprog["Tecnico"] == nuevo_tecnico) &
-                            (df_temp_reprog["Estado"].isin(["Pendiente","Asistió"]))
-                        ]
-
-                        conflicto = False
-                        inicio_nuevo = datetime.strptime(nueva_hora,"%H:%M")
-                        fin_nuevo = inicio_nuevo + timedelta(hours=row["Duracion"])
-
-                        for _, r in df_conflicto.iterrows():
-                            inicio_exist = datetime.strptime(r["Hora"],"%H:%M")
-                            fin_exist = inicio_exist + timedelta(hours=r["Duracion"])
-
-                            if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
-                                conflicto = True
-                                break
-
-                        if conflicto:
-                            st.error("Conflicto de horario con otra cita activa")
-                        else:
-                            nuevo_id = df["ID"].max() + 1
-
-                            nueva = pd.DataFrame([{
-                                "ID": nuevo_id,
-                                "Sede": st.session_state.sede,
-                                "Fecha": str(nueva_fecha),
-                                "Hora": nueva_hora,
-                                "Tecnico": nuevo_tecnico,
-                                "Placa": row["Placa"],
-                                "Modelo": row["Modelo"],
-                                "Nombre": row["Nombre"],
-                                "Celular": row["Celular"],
-                                "TipoServicio": row["TipoServicio"],
-                                "Duracion": row["Duracion"],
-                                "Estado": "Pendiente",
-                                "Reprogramada": "Sí"
-                            }])
-
-                            df.loc[df["ID"] == row["ID"], "Estado"] = "Reprogramada"
-                            df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
-
-                            df = pd.concat([df, nueva], ignore_index=True)
-                            df.to_csv(ARCHIVO_CITAS, index=False)
-
-                            st.success("Cita reprogramada correctamente")
-                            st.rerun()
-
-            else:
-                st.info("Registro cerrado. No se permiten modificaciones.")
-
-# =====================================================
-# TAB 3 - MI AVANCE
-# =====================================================
-with tab3:
-    st.title("📈 Mi Avance")
-
-    df_sede = df[df["Sede"] == st.session_state.sede].copy()
-    df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
-
-    # ================================
-    # SELECTORES
-    # ================================
-    año_sel = st.selectbox(
-        "Año",
-        sorted(df_sede["Fecha"].dt.year.unique(), reverse=True)
-        if not df_sede.empty else [datetime.today().year]
-    )
-
-    mes_sel = st.selectbox(
-        "Mes",
-        list(range(1,13)),
-        index=datetime.today().month-1,
-        format_func=lambda x: calendar.month_name[x]
-    )
-
-    df_mes = df_sede[
-        (df_sede["Fecha"].dt.month == mes_sel) &
-        (df_sede["Fecha"].dt.year == año_sel)
-    ]
-
-    # ================================
-    # CÁLCULOS
-    # ================================
-    total_mes = len(df_mes)
-
-    efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
-    no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
-    reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
-    pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
-
-    efectividad_pct = round((efectivas / total_mes) * 100, 1) if total_mes > 0 else 0
-    no_show_pct = round((no_show / total_mes) * 100, 1) if total_mes > 0 else 0
-    reprog_pct = round((reprogramadas / total_mes) * 100, 1) if total_mes > 0 else 0
-
-    # ================================
-    # TARJETAS PRINCIPALES
-    # ================================
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("📅 Total Citas", total_mes)
-    col2.metric("✅ Citas Efectivas", efectivas)
-    col3.metric("❌ No Show", no_show)
-    col4.metric("🔄 Reprogramadas", reprogramadas)
-
-    st.divider()
-
-    # ================================
-    # INDICADORES DE DESEMPEÑO
-    # ================================
-    st.subheader("📊 Indicadores de Desempeño")
-
-    colA, colB, colC = st.columns(3)
-
-    colA.metric("🎯 % Efectividad", f"{efectividad_pct}%")
-    colB.metric("⚠ % No Show", f"{no_show_pct}%")
-    colC.metric("🔁 % Reprogramación", f"{reprog_pct}%")
-
-    if total_mes > 0:
-        st.progress(efectivas / total_mes)
-
-    # ================================
-    # META MENSUAL
-    # ================================
-    st.divider()
-    st.subheader("🎯 Cumplimiento de Meta")
-
-    df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
-    total_validas = len(df_validas)
-
-    meta_sede = 0
-    fila_meta = metas[metas["Sede"] == st.session_state.sede]
-    if not fila_meta.empty:
-        meta_sede = int(fila_meta["MetaMensual"].values[0])
-
-    avance_pct = round((total_validas/meta_sede)*100,1) if meta_sede > 0 else 0
-
-    colM1, colM2, colM3 = st.columns(3)
-    colM1.metric("📅 Citas válidas", total_validas)
-    colM2.metric("🎯 Meta Mensual", meta_sede)
-    colM3.metric("📈 Avance Meta", f"{avance_pct}%")
-
-    if meta_sede > 0:
-        st.progress(min(total_validas/meta_sede,1.0))
+    
+                else:
+                    st.info("Registro cerrado. No se permiten modificaciones.")
+    
+    # =====================================================
+    # TAB 3 - MI AVANCE
+    # =====================================================
+    with tab3:
+        st.title("📈 Mi Avance")
+    
+        df_sede = df[df["Sede"] == st.session_state.sede].copy()
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
+    
+        # ================================
+        # SELECTORES
+        # ================================
+        año_sel = st.selectbox(
+            "Año",
+            sorted(df_sede["Fecha"].dt.year.unique(), reverse=True)
+            if not df_sede.empty else [datetime.today().year]
+        )
+    
+        mes_sel = st.selectbox(
+            "Mes",
+            list(range(1,13)),
+            index=datetime.today().month-1,
+            format_func=lambda x: calendar.month_name[x]
+        )
+    
+        df_mes = df_sede[
+            (df_sede["Fecha"].dt.month == mes_sel) &
+            (df_sede["Fecha"].dt.year == año_sel)
+        ]
+    
+        # ================================
+        # CÁLCULOS
+        # ================================
+        total_mes = len(df_mes)
+    
+        efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
+        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
+        pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
+    
+        efectividad_pct = round((efectivas / total_mes) * 100, 1) if total_mes > 0 else 0
+        no_show_pct = round((no_show / total_mes) * 100, 1) if total_mes > 0 else 0
+        reprog_pct = round((reprogramadas / total_mes) * 100, 1) if total_mes > 0 else 0
+    
+        # ================================
+        # TARJETAS PRINCIPALES
+        # ================================
+        col1, col2, col3, col4 = st.columns(4)
+    
+        col1.metric("📅 Total Citas", total_mes)
+        col2.metric("✅ Citas Efectivas", efectivas)
+        col3.metric("❌ No Show", no_show)
+        col4.metric("🔄 Reprogramadas", reprogramadas)
+    
+        st.divider()
+    
+        # ================================
+        # INDICADORES DE DESEMPEÑO
+        # ================================
+        st.subheader("📊 Indicadores de Desempeño")
+    
+        colA, colB, colC = st.columns(3)
+    
+        colA.metric("🎯 % Efectividad", f"{efectividad_pct}%")
+        colB.metric("⚠ % No Show", f"{no_show_pct}%")
+        colC.metric("🔁 % Reprogramación", f"{reprog_pct}%")
+    
+        if total_mes > 0:
+            st.progress(efectivas / total_mes)
+    
+        # ================================
+        # META MENSUAL
+        # ================================
+        st.divider()
+        st.subheader("🎯 Cumplimiento de Meta")
+    
+        df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
+        total_validas = len(df_validas)
+    
+        meta_sede = 0
+        fila_meta = metas[metas["Sede"] == st.session_state.sede]
+        if not fila_meta.empty:
+            meta_sede = int(fila_meta["MetaMensual"].values[0])
+    
+        avance_pct = round((total_validas/meta_sede)*100,1) if meta_sede > 0 else 0
+    
+        colM1, colM2, colM3 = st.columns(3)
+        colM1.metric("📅 Citas válidas", total_validas)
+        colM2.metric("🎯 Meta Mensual", meta_sede)
+        colM3.metric("📈 Avance Meta", f"{avance_pct}%")
+    
+        if meta_sede > 0:
+            st.progress(min(total_validas/meta_sede,1.0))
 
     
+
