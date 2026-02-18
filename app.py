@@ -5,6 +5,7 @@ import os
 import calendar
 from streamlit_autorefresh import st_autorefresh
 from io import BytesIO
+import pytz
 
 st.set_page_config(layout="wide")
 
@@ -21,7 +22,6 @@ ARCHIVO_METAS = "metas.csv"
 # =============================
 USUARIOS = {
     "admin": {"password": "1234", "rol": "admin", "sede": "TODAS"},
-
     "tarapoto": {"password": "1234", "rol": "asesor", "sede": "TARAPOTO"},
     "jaen": {"password": "1234", "rol": "asesor", "sede": "JAEN"},
     "bagua": {"password": "1234", "rol": "asesor", "sede": "BAGUA"},
@@ -263,10 +263,19 @@ if st.session_state.rol == "admin":
     # =====================================================
     with tab1:
 
+        # ==============================
+        # HORA REAL PERÚ
+        # ==============================
+        zona_peru = pytz.timezone("America/Lima")
+        hora_actual = datetime.now(zona_peru).strftime('%d/%m/%Y %H:%M:%S')
+
         st.title("📊 Dashboard Ejecutivo General")
+
         col_refresh1, col_refresh2 = st.columns([6,2])
+
         with col_refresh1:
-            st.caption(f"Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            st.caption(f"Última actualización: {hora_actual} (Perú)")
+
         with col_refresh2:
             if st.button("🔄 Actualizar"):
                 st.rerun()
@@ -868,6 +877,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
