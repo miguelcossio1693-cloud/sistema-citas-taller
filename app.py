@@ -490,16 +490,15 @@ else:
             fecha = st.date_input(
                 "Fecha",
                 value=today,
-                min_value=today,
-                use_container_width=True
+                min_value=today
             )
-    
+        
             hora = st.selectbox(
                 "Hora inicio",
                 [f"{h:02d}:00" for h in range(8,19)],
                 use_container_width=True
             )
-    
+        
             duracion = st.selectbox(
                 "Duración (horas)",
                 list(range(1,9)),
@@ -950,6 +949,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
