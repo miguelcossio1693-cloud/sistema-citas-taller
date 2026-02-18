@@ -642,7 +642,7 @@ else:
     
         fecha_gestion = st.date_input(
             "Seleccionar fecha",
-            value=datetime.today(),
+            value=datetime.now(),
             key="filtro_gestion"
         )
     
@@ -950,6 +950,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
