@@ -56,10 +56,10 @@ TECNICOS = {
     "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL", "DENIS"],
     "TARAPOTO": ["BILLY", "ENRIQUE", "JULIO", "MARCOS", "ANSELMO", "ESLEYTER", "HANS", "FREDDY"],
     "YURIMAGUAS": ["JOSE", "JUNIOR", "GUIDO", "JHON"],
+    "MOYOBAMBA": ["JACK", "MILLER", "LEONAN", "LUIS", "ALEX"],    
     
     # SEDES TEMPORALES
     "BAGUA": ["TEC 1", "TEC 2"],
-    "MOYOBAMBA": ["TEC 1", "TEC 2"],
     "IQUITOS PROSPERO": ["TEC 1", "TEC 2"],
     "IQUITOS QUIÑONES": ["TEC 1", "TEC 2"],
     "PUCALLPA": ["TEC 1", "TEC 2"],
@@ -94,6 +94,13 @@ COLORES = {
     "JUNIOR": "#73C6B6",
     "GUIDO": "#F7DC6F",
     "JHON": "#F1948A",
+
+    # MOYOBAMBA
+    "JACK": "#3498DB",
+    "MILLER": "#27AE60",
+    "LEONAN": "#F1C40F",
+    "LUIS": "#E67E22",
+    "ALEX": "#8E44AD",
 
     # TECNICOS TEMPORALES
     "TEC 1": "#D5DBDB",
@@ -941,6 +948,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
