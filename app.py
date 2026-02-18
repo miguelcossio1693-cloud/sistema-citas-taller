@@ -35,43 +35,94 @@ USUARIOS = {
 SEDES = ["TARAPOTO","JAEN","BAGUA","MOYOBAMBA","IQUITOS PROSPERO","IQUITOS QUIÑONES","PUCALLPA","YURIMAGUAS"]
 
 # =============================
-# FUNCION EXPORTAR EXCEL (MEJORADA)
+# FUNCION EXPORTAR EXCEL EJECUTIVO
 # =============================
-def generar_excel(dataframe, nombre_hoja="Reporte"):
+def generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel):
 
     output = BytesIO()
 
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
 
-        # Copia segura
-        df_export = dataframe.copy()
+        # =============================
+        # HOJA 1 - RESUMEN GLOBAL
+        # =============================
+        total = len(df_mes)
+        efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
+        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
 
-        # Convertir fecha si existe
-        if "Fecha" in df_export.columns:
-            df_export["Fecha"] = pd.to_datetime(df_export["Fecha"]).dt.strftime("%d/%m/%Y")
+        efectividad_pct = round((efectivas/total)*100,1) if total>0 else 0
+        no_show_pct = round((no_show/total)*100,1) if total>0 else 0
 
-        df_export.to_excel(
-            writer,
-            index=False,
-            sheet_name=nombre_hoja
-        )
+        df_resumen_global = pd.DataFrame({
+            "Indicador":[
+                "Total Citas",
+                "Citas Efectivas",
+                "No Show",
+                "Reprogramadas",
+                "% Efectividad",
+                "% No Show"
+            ],
+            "Valor":[
+                total,
+                efectivas,
+                no_show,
+                reprogramadas,
+                f"{efectividad_pct}%",
+                f"{no_show_pct}%"
+            ]
+        })
 
-        # Ajustar ancho automático de columnas
-        worksheet = writer.sheets[nombre_hoja]
+        df_resumen_global.to_excel(writer, index=False, sheet_name="Resumen Global")
 
-        for column in worksheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
+        # =============================
+        # HOJA 2 - RESUMEN POR SEDE
+        # =============================
+        resumen_sedes = []
 
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
+        for sede in SEDES:
 
-            adjusted_width = max_length + 2
-            worksheet.column_dimensions[column_letter].width = adjusted_width
+            df_sede = df_mes[df_mes["Sede"] == sede]
+
+            total_sede = len(df_sede)
+            efectivas_sede = len(df_sede[df_sede["Estado"] == "Asistió"])
+            no_show_sede = len(df_sede[df_sede["Estado"] == "No asistió"])
+
+            efectividad_sede_pct = round((efectivas_sede/total_sede)*100,1) if total_sede>0 else 0
+
+            meta_sede = 0
+            fila_meta = metas[metas["Sede"] == sede]
+            if not fila_meta.empty:
+                meta_sede = int(fila_meta["MetaMensual"].values[0])
+
+            citas_validas = len(df_sede[df_sede["Estado"].isin(["Pendiente","Asistió"])])
+            avance_meta = round((citas_validas/meta_sede)*100,1) if meta_sede>0 else 0
+
+            resumen_sedes.append({"Sede": sede, "Total Citas": total_sede, "Efectivas": efectivas_sede, "No Show": no_show_sede, "% Efectividad": f"{efectividad_sede_pct}%", "Meta": meta_sede, "Avance Meta %": f"{avance_meta}%"})
+
+        df_resumen_sedes = pd.DataFrame(resumen_sedes)
+        df_resumen_sedes.to_excel(writer, index=False, sheet_name="Resumen por Sede")
+
+        # =============================
+        # HOJA 3 - DETALLE COMPLETO
+        # =============================
+        df_detalle = df_mes.copy()
+
+        if "Fecha" in df_detalle.columns:
+            df_detalle["Fecha"] = pd.to_datetime(df_detalle["Fecha"]).dt.strftime("%d/%m/%Y")
+
+        columnas_orden = [
+            "ID","Sede","Fecha","Hora","Tecnico",
+            "Nombre","Celular",
+            "Placa","Modelo",
+            "TipoServicio","Duracion",
+            "Estado","Reprogramada"
+        ]
+
+        columnas_validas = [c for c in columnas_orden if c in df_detalle.columns]
+        df_detalle = df_detalle[columnas_validas]
+
+        df_detalle.to_excel(writer, index=False, sheet_name="Detalle Citas")
 
     output.seek(0)
     return output
@@ -349,6 +400,20 @@ if st.session_state.rol == "admin":
             (df_admin["Fecha"].dt.year == año_sel) &
             (df_admin["Fecha"].dt.month == mes_sel)
         ]
+        st.divider()
+        st.subheader("📥 Exportar Reporte Ejecutivo")
+        
+        if not df_mes.empty:
+        
+            excel_file = generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel)
+        
+            st.download_button(
+                label="📊 Descargar Reporte Ejecutivo en Excel",
+                data=excel_file,
+                file_name=f"reporte_ejecutivo_{mes_sel}_{año_sel}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
 
         # =====================================================
         # KPIs GLOBALES
@@ -975,6 +1040,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
