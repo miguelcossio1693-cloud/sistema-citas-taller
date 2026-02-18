@@ -349,7 +349,7 @@ if st.session_state.rol == "admin":
     with tab1:
 
         # ==============================
-        # HORA REAL PERÚ
+        # HORA PERÚ
         # ==============================
         zona_peru = pytz.timezone("America/Lima")
         hora_actual = datetime.now(zona_peru).strftime('%d/%m/%Y %H:%M:%S')
@@ -357,34 +357,42 @@ if st.session_state.rol == "admin":
         st.title("📊 Dashboard Ejecutivo General")
 
         col_refresh1, col_refresh2 = st.columns([6,2])
-
         with col_refresh1:
             st.caption(f"Última actualización: {hora_actual} (Perú)")
-
         with col_refresh2:
             if st.button("🔄 Actualizar"):
                 st.rerun()
 
+        st.divider()
+
         # ==============================
-        # NORMALIZAR DATA
+        # SELECTOR SEDE ADMIN
         # ==============================
-        if df.empty:
-            df_admin = pd.DataFrame(columns=["ID","Sede","Fecha","Estado"])
+        st.subheader("🏢 Supervisión por sede")
+
+        sede_admin = st.selectbox(
+            "Seleccionar sede",
+            ["TODAS"] + SEDES,
+            key="admin_sede_selector"
+        )
+
+        if sede_admin == "TODAS":
+            df_admin_filtrado = df.copy()
         else:
-            df_admin = df.copy()
+            df_admin_filtrado = df[df["Sede"] == sede_admin].copy()
 
-            if "Estado" not in df_admin.columns:
-                df_admin["Estado"] = "Pendiente"
+        if df_admin_filtrado.empty:
+            st.warning("No hay registros")
+            st.stop()
 
-            df_admin["Fecha"] = pd.to_datetime(df_admin["Fecha"])
+        df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"])
 
         # ==============================
-        # SELECTORES
+        # SELECTORES FECHA
         # ==============================
         año_sel = st.selectbox(
             "Año",
-            sorted(df_admin["Fecha"].dt.year.unique(), reverse=True)
-            if not df_admin.empty else [datetime.today().year],
+            sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
             key="admin_year"
         )
 
@@ -396,152 +404,96 @@ if st.session_state.rol == "admin":
             key="admin_month"
         )
 
-        df_mes = df_admin[
-            (df_admin["Fecha"].dt.year == año_sel) &
-            (df_admin["Fecha"].dt.month == mes_sel)
+        df_mes = df_admin_filtrado[
+            (df_admin_filtrado["Fecha"].dt.year == año_sel) &
+            (df_admin_filtrado["Fecha"].dt.month == mes_sel)
         ]
-        st.divider()
-        st.subheader("📥 Exportar Reporte Ejecutivo")
-        
-        if not df_mes.empty:
-        
-            excel_file = generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel)
-        
-            st.download_button(
-                label="📊 Descargar Reporte Ejecutivo en Excel",
-                data=excel_file,
-                file_name=f"reporte_ejecutivo_{mes_sel}_{año_sel}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
 
         # =====================================================
-        # KPIs GLOBALES
+        # KPIs
         # =====================================================
-        st.subheader("🌎 Indicadores Globales")
+        st.subheader("🌎 Indicadores")
 
         total_mes = len(df_mes)
         efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
         no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
         reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
 
-        efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes > 0 else 0
-        no_show_pct = round((no_show/total_mes)*100,1) if total_mes > 0 else 0
-
         c1,c2,c3,c4 = st.columns(4)
-        c1.metric("📅 Total Citas", total_mes)
+        c1.metric("📅 Total", total_mes)
         c2.metric("✅ Efectivas", efectivas)
         c3.metric("❌ No Show", no_show)
         c4.metric("🔄 Reprogramadas", reprogramadas)
 
         st.divider()
 
-        cA,cB = st.columns(2)
-        cA.metric("🎯 % Efectividad Global", f"{efectividad_pct}%")
-        cB.metric("⚠ % No Show Global", f"{no_show_pct}%")
+        # =====================================================
+        # CALENDARIO
+        # =====================================================
+        st.subheader("📅 Calendario")
+
+        conteo = (
+            df_mes.groupby(df_mes["Fecha"].dt.day)["ID"].count().to_dict()
+            if not df_mes.empty else {}
+        )
+
+        cal = calendar.monthcalendar(año_sel, mes_sel)
+
+        html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
+        html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
+
+        for semana in cal:
+            html += "<tr>"
+            for dia in semana:
+                if dia == 0:
+                    html += "<td></td>"
+                else:
+                    cant = conteo.get(dia,0)
+                    html += f"<td style='padding:8px;border:1px solid #ddd;'><b>{dia}</b><br>{cant}</td>"
+            html += "</tr>"
+
+        html += "</table>"
+        st.markdown(html, unsafe_allow_html=True)
 
         st.divider()
 
         # =====================================================
-        # RESUMEN EJECUTIVO POR SEDE
+        # 🔥 ELIMINACIÓN CITAS ADMIN
         # =====================================================
-        st.subheader("🏢 Resumen Ejecutivo por Sede")
+        st.subheader("🗑 Eliminación de citas (modo supervisor)")
 
-        for sede in SEDES:
+        fecha_admin = st.date_input(
+            "Filtrar fecha",
+            value=datetime.now().date(),
+            key="admin_fecha_delete"
+        )
 
-            df_sede = df_mes[df_mes["Sede"] == sede]
+        df_del = df_admin_filtrado.copy()
+        df_del["Fecha"] = pd.to_datetime(df_del["Fecha"]).dt.date
+        df_del = df_del[df_del["Fecha"] == fecha_admin]
 
-            total_sede = len(df_sede)
-            efectivas_sede = len(df_sede[df_sede["Estado"] == "Asistió"])
-            no_show_sede = len(df_sede[df_sede["Estado"] == "No asistió"])
-            reprog_sede = len(df_sede[df_sede["Estado"] == "Reprogramada"])
+        if df_del.empty:
+            st.info("No hay citas para esa fecha")
+        else:
+            for _, row in df_del.iterrows():
 
-            efectividad_sede_pct = round((efectivas_sede/total_sede)*100,1) if total_sede > 0 else 0
+                col1, col2 = st.columns([6,1])
 
-            # Meta
-            meta_sede = 0
-            fila_meta = metas[metas["Sede"] == sede]
-            if not fila_meta.empty:
-                meta_sede = int(fila_meta["MetaMensual"].values[0])
+                with col1:
+                    st.markdown(f"""
+                    **ID:** {row['ID']}  
+                    **Sede:** {row['Sede']}  
+                    **Cliente:** {row['Nombre']}  
+                    **Hora:** {row['Hora']}  
+                    **Estado:** {row['Estado']}
+                    """)
 
-            citas_validas = len(df_sede[df_sede["Estado"].isin(["Pendiente","Asistió"])])
-            avance_meta_pct = round((citas_validas/meta_sede)*100,1) if meta_sede > 0 else 0
-
-            # Semáforo meta
-            if avance_meta_pct >= 100:
-                semaforo = "🟢"
-            elif avance_meta_pct >= 70:
-                semaforo = "🟡"
-            else:
-                semaforo = "🔴"
-
-            st.markdown(f"### {semaforo} {sede}")
-
-            col1,col2,col3,col4,col5 = st.columns(5)
-
-            col1.metric("📅 Total", total_sede)
-            col2.metric("✅ Efectivas", efectivas_sede)
-            col3.metric("❌ No Show", no_show_sede)
-            col4.metric("🎯 % Efectividad", f"{efectividad_sede_pct}%")
-            col5.metric("📈 Avance Meta", f"{avance_meta_pct}%")
-
-            if meta_sede > 0:
-                st.progress(min(citas_validas/meta_sede,1.0))
-
-            st.divider()
-
-        # =====================================================
-        # CALENDARIO POR SEDE
-        # =====================================================
-        st.subheader("📅 Calendario de Agendamiento")
-
-        for sede in SEDES:
-
-            st.markdown(f"### 🏢 {sede}")
-
-            df_sede_cal = df_mes[
-                (df_mes["Sede"] == sede) &
-                (df_mes["Estado"].isin(["Pendiente","Asistió"]))
-            ]
-
-            conteo = (
-                df_sede_cal
-                .groupby(df_sede_cal["Fecha"].dt.day)["ID"]
-                .count()
-                .to_dict()
-                if not df_sede_cal.empty else {}
-            )
-
-            cal = calendar.monthcalendar(año_sel, mes_sel)
-
-            html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
-            html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
-
-            for semana in cal:
-                html += "<tr>"
-                for dia in semana:
-                    if dia == 0:
-                        html += "<td></td>"
-                    else:
-                        cant = conteo.get(dia, 0)
-
-                        if cant == 0:
-                            color = "#BFC9CA"
-                        elif cant <= 2:
-                            color = "#2E86C1"
-                        elif cant <= 4:
-                            color = "#28B463"
-                        else:
-                            color = "#CB4335"
-
-                        html += f"<td style='padding:8px;border:1px solid #ddd;color:{color};font-weight:bold;'>"
-                        html += f"{dia}<br><span style='font-size:11px;'>{cant} citas</span></td>"
-
-                html += "</tr>"
-
-            html += "</table>"
-            st.markdown(html, unsafe_allow_html=True)
-            st.divider()
+                with col2:
+                    if st.button(f"🗑 Eliminar {row['ID']}", key=f"del_admin_{row['ID']}"):
+                        df = df[df["ID"] != row["ID"]]
+                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        st.success("Cita eliminada")
+                        st.rerun()
 
     # =====================================================
     # TAB 2 - CONFIGURAR META
@@ -564,7 +516,6 @@ if st.session_state.rol == "admin":
             ])
             metas.to_csv(ARCHIVO_METAS, index=False)
             st.success("Meta guardada correctamente")
-
 # =============================
 # ASESOR
 # =============================
@@ -1040,6 +991,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
