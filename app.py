@@ -481,23 +481,54 @@ else:
     
         col1, col2 = st.columns(2)
     
+        # ================================
+        # COLUMNA 1
+        # ================================
         with col1:
-            fecha = st.date_input("Fecha", min_value=datetime.today())
-            hora = st.selectbox("Hora inicio",[f"{h:02d}:00" for h in range(8,19)])
-            duracion = st.number_input("Duración (horas)",1,8,1)
-            tecnico = st.selectbox("Técnico", obtener_tecnicos(st.session_state.sede))
+            fecha = st.date_input(
+                "Fecha",
+                min_value=datetime.today()
+            )
     
+            hora = st.selectbox(
+                "Hora inicio",
+                [f"{h:02d}:00" for h in range(8,19)]
+            )
+    
+            # 🔒 BLOQUEADO (no editable manual)
+            duracion = st.selectbox(
+                "Duración (horas)",
+                list(range(1,9)),
+                index=0
+            )
+    
+            tecnico = st.selectbox(
+                "Técnico",
+                obtener_tecnicos(st.session_state.sede)
+            )
+    
+        # ================================
+        # COLUMNA 2
+        # ================================
         with col2:
-            placa = st.text_input("Placa")
-            modelo = st.text_input("Modelo")
-            nombre = st.text_input("Nombres y apellidos")
-            celular = st.text_input("Celular")
-            servicio = st.text_input("Tipo de Servicio")
+            placa = st.text_input("Placa").upper().strip()
+            modelo = st.text_input("Modelo").upper().strip()
+            nombre = st.text_input("Nombres y apellidos").title().strip()
+            celular = st.text_input("Celular").strip()
+            servicio = st.text_input("Tipo de Servicio").strip()
     
+        # ================================
+        # GUARDAR
+        # ================================
         if st.button("Guardar"):
     
+            # 🔒 VALIDACIONES
             if not placa or not modelo or not nombre or not servicio:
                 st.warning("Completa todos los datos obligatorios")
+                st.stop()
+    
+            if not celular.isdigit():
+                st.warning("El celular debe contener solo números")
                 st.stop()
     
             df_temp = df.copy()
@@ -511,16 +542,17 @@ else:
             ]
     
             inicio_nuevo = datetime.strptime(hora,"%H:%M")
-            fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
+            fin_nuevo = inicio_nuevo + timedelta(hours=int(duracion))
     
-            conflicto=False
+            conflicto = False
     
-            for _,row in df_dia.iterrows():
-                if row["Tecnico"]==tecnico:
-                    inicio_exist = datetime.strptime(row["Hora"],"%H:%M")
-                    fin_exist = inicio_exist + timedelta(hours=row["Duracion"])
+            for _, row_existente in df_dia.iterrows():
+                if row_existente["Tecnico"] == tecnico:
+                    inicio_exist = datetime.strptime(row_existente["Hora"],"%H:%M")
+                    fin_exist = inicio_exist + timedelta(hours=int(row_existente["Duracion"]))
+    
                     if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
-                        conflicto=True
+                        conflicto = True
                         break
     
             if conflicto:
@@ -529,32 +561,34 @@ else:
                 nuevo_id = df["ID"].max()+1 if not df.empty else 1
     
                 nueva = pd.DataFrame([{
-                    "ID":nuevo_id,
-                    "Sede":st.session_state.sede,
-                    "Fecha":str(fecha),
-                    "Hora":hora,
-                    "Tecnico":tecnico,
-                    "Placa":placa,
-                    "Modelo":modelo,
-                    "Nombre":nombre,
-                    "Celular":celular,
-                    "TipoServicio":servicio,
-                    "Duracion":duracion,
-                    "Estado":"Pendiente",
-                    "Reprogramada":"No"
+                    "ID": nuevo_id,
+                    "Sede": st.session_state.sede,
+                    "Fecha": str(fecha),
+                    "Hora": hora,
+                    "Tecnico": tecnico,
+                    "Placa": placa,
+                    "Modelo": modelo,
+                    "Nombre": nombre,
+                    "Celular": celular,
+                    "TipoServicio": servicio,
+                    "Duracion": int(duracion),
+                    "Estado": "Pendiente",
+                    "Reprogramada": "No"
                 }])
     
-                df = pd.concat([df,nueva],ignore_index=True)
-                df.to_csv(ARCHIVO_CITAS,index=False)
+                df = pd.concat([df, nueva], ignore_index=True)
+                df.to_csv(ARCHIVO_CITAS, index=False)
     
                 st.success("Cita registrada correctamente")
                 st.rerun()
     
-        # 🔥 TABLERO SOLO CON CITAS ACTIVAS
+        # ================================
+        # TABLERO SOLO CITAS ACTIVAS
+        # ================================
         mostrar_tablero(
             df[
-                (df["Sede"]==st.session_state.sede) &
-                (df["Fecha"]==str(fecha)) &
+                (df["Sede"] == st.session_state.sede) &
+                (df["Fecha"] == str(fecha)) &
                 (df["Estado"].isin(["Pendiente","Asistió"]))
             ],
             st.session_state.sede
@@ -877,6 +911,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
