@@ -479,6 +479,8 @@ else:
     with tab1:
         st.title("Agendar Cita")
     
+        today = datetime.now().date()  # ✅ fecha segura
+    
         col1, col2, col3 = st.columns([1,1.2,2])
     
         # ==============================
@@ -487,7 +489,8 @@ else:
         with col1:
             fecha = st.date_input(
                 "Fecha",
-                min_value=datetime.today(),
+                value=today,
+                min_value=today,
                 use_container_width=True
             )
     
@@ -629,7 +632,7 @@ else:
             ],
             st.session_state.sede
         )
-    
+
     # =====================================================
     # TAB 2 - GESTIÓN DE CITAS
     # =====================================================
@@ -947,6 +950,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
