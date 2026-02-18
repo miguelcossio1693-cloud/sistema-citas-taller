@@ -753,85 +753,98 @@ with tab2:
             else:
                 st.info("Registro cerrado. No se permiten modificaciones.")
 
-    # =====================================================
-    # TAB 3 - MI AVANCE
-    # =====================================================
-    with tab3:
-        st.title("Mi Avance")
-    
-        df_sede = df[df["Sede"] == st.session_state.sede].copy()
-        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
-    
-        año_sel = st.selectbox(
-            "Año",
-            sorted(df_sede["Fecha"].dt.year.unique(), reverse=True)
-            if not df_sede.empty else [datetime.today().year]
-        )
-    
-        mes_sel = st.selectbox(
-            "Mes",
-            list(range(1,13)),
-            index=datetime.today().month-1,
-            format_func=lambda x: calendar.month_name[x]
-        )
-    
-        df_mes = df_sede[
-            (df_sede["Fecha"].dt.month == mes_sel) &
-            (df_sede["Fecha"].dt.year == año_sel)
-        ]
-    
-        # ================================
-        # FILTRAR CITAS VÁLIDAS PARA META
-        # ================================
-        df_validas = df_mes[
-            df_mes["Estado"].isin(["Pendiente","Asistió"])
-        ]
-    
-        total_citas = len(df_validas)
-    
-        # ================================
-        # META
-        # ================================
-        meta_sede = 0
-        fila_meta = metas[metas["Sede"] == st.session_state.sede]
-        if not fila_meta.empty:
-            meta_sede = int(fila_meta["MetaMensual"].values[0])
-    
-        porcentaje = round((total_citas/meta_sede)*100,1) if meta_sede > 0 else 0
-    
-        col1, col2, col3 = st.columns(3)
-        col1.metric("📅 Citas válidas del Mes", total_citas)
-        col2.metric("🎯 Meta Mensual", meta_sede)
-        col3.metric("📈 Avance", f"{porcentaje}%")
-    
-        if meta_sede > 0:
-            st.progress(min(total_citas/meta_sede,1.0))
-    
-        # ================================
-        # INDICADORES ADICIONALES
-        # ================================
-        st.divider()
-        st.subheader("📊 Indicadores del Mes")
-    
-        total_mes = len(df_mes)
-        asistidas = len(df_mes[df_mes["Estado"] == "Asistió"])
-        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
-        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
-    
-        colA, colB, colC = st.columns(3)
-    
-        asistencia_pct = round((asistidas/total_mes)*100,1) if total_mes > 0 else 0
-        no_show_pct = round((no_show/total_mes)*100,1) if total_mes > 0 else 0
-        reprog_pct = round((reprogramadas/total_mes)*100,1) if total_mes > 0 else 0
-    
-        colA.metric("✅ % Asistencia", f"{asistencia_pct}%")
-        colB.metric("❌ % No Show", f"{no_show_pct}%")
-        colC.metric("🔄 % Reprogramación", f"{reprog_pct}%")
+# =====================================================
+# TAB 3 - MI AVANCE
+# =====================================================
+with tab3:
+    st.title("📈 Mi Avance")
 
+    df_sede = df[df["Sede"] == st.session_state.sede].copy()
+    df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
 
+    # ================================
+    # SELECTORES
+    # ================================
+    año_sel = st.selectbox(
+        "Año",
+        sorted(df_sede["Fecha"].dt.year.unique(), reverse=True)
+        if not df_sede.empty else [datetime.today().year]
+    )
 
+    mes_sel = st.selectbox(
+        "Mes",
+        list(range(1,13)),
+        index=datetime.today().month-1,
+        format_func=lambda x: calendar.month_name[x]
+    )
 
+    df_mes = df_sede[
+        (df_sede["Fecha"].dt.month == mes_sel) &
+        (df_sede["Fecha"].dt.year == año_sel)
+    ]
 
+    # ================================
+    # CÁLCULOS
+    # ================================
+    total_mes = len(df_mes)
 
+    efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
+    no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+    reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
+    pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
 
+    efectividad_pct = round((efectivas / total_mes) * 100, 1) if total_mes > 0 else 0
+    no_show_pct = round((no_show / total_mes) * 100, 1) if total_mes > 0 else 0
+    reprog_pct = round((reprogramadas / total_mes) * 100, 1) if total_mes > 0 else 0
 
+    # ================================
+    # TARJETAS PRINCIPALES
+    # ================================
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric("📅 Total Citas", total_mes)
+    col2.metric("✅ Citas Efectivas", efectivas)
+    col3.metric("❌ No Show", no_show)
+    col4.metric("🔄 Reprogramadas", reprogramadas)
+
+    st.divider()
+
+    # ================================
+    # INDICADORES DE DESEMPEÑO
+    # ================================
+    st.subheader("📊 Indicadores de Desempeño")
+
+    colA, colB, colC = st.columns(3)
+
+    colA.metric("🎯 % Efectividad", f"{efectividad_pct}%")
+    colB.metric("⚠ % No Show", f"{no_show_pct}%")
+    colC.metric("🔁 % Reprogramación", f"{reprog_pct}%")
+
+    if total_mes > 0:
+        st.progress(efectivas / total_mes)
+
+    # ================================
+    # META MENSUAL
+    # ================================
+    st.divider()
+    st.subheader("🎯 Cumplimiento de Meta")
+
+    df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
+    total_validas = len(df_validas)
+
+    meta_sede = 0
+    fila_meta = metas[metas["Sede"] == st.session_state.sede]
+    if not fila_meta.empty:
+        meta_sede = int(fila_meta["MetaMensual"].values[0])
+
+    avance_pct = round((total_validas/meta_sede)*100,1) if meta_sede > 0 else 0
+
+    colM1, colM2, colM3 = st.columns(3)
+    colM1.metric("📅 Citas válidas", total_validas)
+    colM2.metric("🎯 Meta Mensual", meta_sede)
+    colM3.metric("📈 Avance Meta", f"{avance_pct}%")
+
+    if meta_sede > 0:
+        st.progress(min(total_validas/meta_sede,1.0))
+
+    
