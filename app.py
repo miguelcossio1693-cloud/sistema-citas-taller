@@ -496,14 +496,12 @@ else:
             hora = st.selectbox(
                 "Hora inicio",
                 [f"{h:02d}:00" for h in range(8,19)],
-                use_container_width=True
             )
         
             duracion = st.selectbox(
                 "Duración (horas)",
                 list(range(1,9)),
                 index=0,
-                use_container_width=True
             )
     
         # ==============================
@@ -513,20 +511,17 @@ else:
             tecnico = st.selectbox(
                 "Técnico",
                 obtener_tecnicos(st.session_state.sede),
-                use_container_width=True
             )
     
             placa = st.text_input(
                 "Placa",
                 max_chars=8,
                 placeholder="Ej: ABC123",
-                use_container_width=True
             )
     
             modelo = st.text_input(
                 "Modelo",
                 placeholder="Ej: Wave 110",
-                use_container_width=True
             )
     
         # ==============================
@@ -536,20 +531,17 @@ else:
             nombre = st.text_input(
                 "Nombres y apellidos",
                 placeholder="Nombre completo del cliente",
-                use_container_width=True
             )
     
             celular = st.text_input(
                 "Celular",
                 max_chars=9,
                 placeholder="9XXXXXXXX",
-                use_container_width=True
             )
     
             servicio = st.text_input(
                 "Tipo de Servicio",
                 placeholder="Ej: Mantenimiento + cambio de pastillas",
-                use_container_width=True
             )
     
         st.divider()
@@ -949,6 +941,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
