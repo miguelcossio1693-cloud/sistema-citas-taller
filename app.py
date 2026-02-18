@@ -474,61 +474,96 @@ else:
     tab1, tab2, tab3 = st.tabs(["📅 Agendar","📋 Gestión de Citas","📈 Mi Avance"])
 
     # =====================================================
-    # TAB 1 - AGENDAR
+    # TAB 1 - AGENDAR (DISEÑO MEJORADO 3 COLUMNAS)
     # =====================================================
     with tab1:
         st.title("Agendar Cita")
     
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns([1,1.2,2])
     
-        # ================================
-        # COLUMNA 1
-        # ================================
+        # ==============================
+        # COLUMNA 1 - DATOS CORTOS
+        # ==============================
         with col1:
             fecha = st.date_input(
                 "Fecha",
-                min_value=datetime.today()
+                min_value=datetime.today(),
+                use_container_width=True
             )
     
             hora = st.selectbox(
                 "Hora inicio",
-                [f"{h:02d}:00" for h in range(8,19)]
+                [f"{h:02d}:00" for h in range(8,19)],
+                use_container_width=True
             )
     
-            # 🔒 BLOQUEADO (no editable manual)
             duracion = st.selectbox(
                 "Duración (horas)",
                 list(range(1,9)),
-                index=0
+                index=0,
+                use_container_width=True
             )
     
+        # ==============================
+        # COLUMNA 2 - VEHÍCULO
+        # ==============================
+        with col2:
             tecnico = st.selectbox(
                 "Técnico",
-                obtener_tecnicos(st.session_state.sede)
+                obtener_tecnicos(st.session_state.sede),
+                use_container_width=True
             )
     
-        # ================================
-        # COLUMNA 2
-        # ================================
-        with col2:
-            placa = st.text_input("Placa").upper().strip()
-            modelo = st.text_input("Modelo").upper().strip()
-            nombre = st.text_input("Nombres y apellidos").title().strip()
-            celular = st.text_input("Celular").strip()
-            servicio = st.text_input("Tipo de Servicio").strip()
+            placa = st.text_input(
+                "Placa",
+                max_chars=8,
+                placeholder="Ej: ABC123",
+                use_container_width=True
+            )
     
-        # ================================
-        # GUARDAR
-        # ================================
-        if st.button("Guardar"):
+            modelo = st.text_input(
+                "Modelo",
+                placeholder="Ej: Wave 110",
+                use_container_width=True
+            )
     
-            # 🔒 VALIDACIONES
+        # ==============================
+        # COLUMNA 3 - CLIENTE
+        # ==============================
+        with col3:
+            nombre = st.text_input(
+                "Nombres y apellidos",
+                placeholder="Nombre completo del cliente",
+                use_container_width=True
+            )
+    
+            celular = st.text_input(
+                "Celular",
+                max_chars=9,
+                placeholder="9XXXXXXXX",
+                use_container_width=True
+            )
+    
+            servicio = st.text_input(
+                "Tipo de Servicio",
+                placeholder="Ej: Mantenimiento + cambio de pastillas",
+                use_container_width=True
+            )
+    
+        st.divider()
+    
+        # =====================================================
+        # GUARDAR CITA
+        # =====================================================
+        if st.button("Guardar Cita", use_container_width=True):
+    
+            # Validaciones básicas
             if not placa or not modelo or not nombre or not servicio:
                 st.warning("Completa todos los datos obligatorios")
                 st.stop()
     
-            if not celular.isdigit():
-                st.warning("El celular debe contener solo números")
+            if not celular.isdigit() or len(celular) != 9:
+                st.warning("El celular debe tener 9 dígitos numéricos")
                 st.stop()
     
             df_temp = df.copy()
@@ -542,14 +577,15 @@ else:
             ]
     
             inicio_nuevo = datetime.strptime(hora,"%H:%M")
-            fin_nuevo = inicio_nuevo + timedelta(hours=int(duracion))
+            fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
     
             conflicto = False
     
-            for _, row_existente in df_dia.iterrows():
-                if row_existente["Tecnico"] == tecnico:
-                    inicio_exist = datetime.strptime(row_existente["Hora"],"%H:%M")
-                    fin_exist = inicio_exist + timedelta(hours=int(row_existente["Duracion"]))
+            for _, row in df_dia.iterrows():
+                if row["Tecnico"] == tecnico:
+    
+                    inicio_exist = datetime.strptime(row["Hora"],"%H:%M")
+                    fin_exist = inicio_exist + timedelta(hours=row["Duracion"])
     
                     if inicio_nuevo < fin_exist and fin_nuevo > inicio_exist:
                         conflicto = True
@@ -558,7 +594,7 @@ else:
             if conflicto:
                 st.error("Conflicto de horario con otra cita activa")
             else:
-                nuevo_id = df["ID"].max()+1 if not df.empty else 1
+                nuevo_id = df["ID"].max() + 1 if not df.empty else 1
     
                 nueva = pd.DataFrame([{
                     "ID": nuevo_id,
@@ -566,12 +602,12 @@ else:
                     "Fecha": str(fecha),
                     "Hora": hora,
                     "Tecnico": tecnico,
-                    "Placa": placa,
+                    "Placa": placa.upper(),
                     "Modelo": modelo,
                     "Nombre": nombre,
                     "Celular": celular,
                     "TipoServicio": servicio,
-                    "Duracion": int(duracion),
+                    "Duracion": duracion,
                     "Estado": "Pendiente",
                     "Reprogramada": "No"
                 }])
@@ -582,9 +618,9 @@ else:
                 st.success("Cita registrada correctamente")
                 st.rerun()
     
-        # ================================
-        # TABLERO SOLO CITAS ACTIVAS
-        # ================================
+        # =====================================================
+        # TABLERO (SOLO CITAS ACTIVAS)
+        # =====================================================
         mostrar_tablero(
             df[
                 (df["Sede"] == st.session_state.sede) &
@@ -911,6 +947,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
