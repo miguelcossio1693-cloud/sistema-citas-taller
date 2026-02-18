@@ -53,7 +53,7 @@ def generar_excel(dataframe):
 # =============================
 TECNICOS = {
 
-    "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL"],
+    "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL", "DENIS"],
     "TARAPOTO": ["BILLY", "ENRIQUE", "JULIO", "MARCOS", "ANSELMO", "ESLEYTER", "HANS", "FREDDY"],
     "YURIMAGUAS": ["JOSE", "JUNIOR", "GUIDO", "JHON"],
     
@@ -77,6 +77,7 @@ COLORES = {
     "MESIAS": "#F5B7B1",
     "DAGNER": "#D2B4DE",
     "ABEL": "#FAD7A0",
+    "DENIS": "#F8C471",
 
     # TARAPOTO
     "BILLY": "#85C1E9",
@@ -843,4 +844,5 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
