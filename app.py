@@ -32,19 +32,47 @@ USUARIOS = {
     "yurimaguas": {"password": "1234", "rol": "asesor", "sede": "YURIMAGUAS"},
 }
 
-SEDES = [
-    "TARAPOTO","JAEN","BAGUA","MOYOBAMBA",
-    "IQUITOS PROSPERO","IQUITOS QUIÑONES",
-    "PUCALLPA","YURIMAGUAS"
-]
+SEDES = ["TARAPOTO","JAEN","BAGUA","MOYOBAMBA","IQUITOS PROSPERO","IQUITOS QUIÑONES","PUCALLPA","YURIMAGUAS"]
 
 # =============================
-# FUNCION EXPORTAR EXCEL
+# FUNCION EXPORTAR EXCEL (MEJORADA)
 # =============================
-def generar_excel(dataframe):
+def generar_excel(dataframe, nombre_hoja="Reporte"):
+
     output = BytesIO()
-    with pd.ExcelWriter(output) as writer:
-        dataframe.to_excel(writer, index=False, sheet_name='Reporte')
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+
+        # Copia segura
+        df_export = dataframe.copy()
+
+        # Convertir fecha si existe
+        if "Fecha" in df_export.columns:
+            df_export["Fecha"] = pd.to_datetime(df_export["Fecha"]).dt.strftime("%d/%m/%Y")
+
+        df_export.to_excel(
+            writer,
+            index=False,
+            sheet_name=nombre_hoja
+        )
+
+        # Ajustar ancho automático de columnas
+        worksheet = writer.sheets[nombre_hoja]
+
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+
+            adjusted_width = max_length + 2
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+
     output.seek(0)
     return output
 
@@ -52,7 +80,6 @@ def generar_excel(dataframe):
 # TECNICOS POR SEDE
 # =============================
 TECNICOS = {
-
     "JAEN": ["CARLOS", "JAIRO", "LUIS EDWIN", "MESIAS", "DAGNER", "ABEL", "DENIS"],
     "TARAPOTO": ["BILLY", "ENRIQUE", "JULIO", "MARCOS", "ANSELMO", "ESLEYTER", "HANS", "FREDDY"],
     "YURIMAGUAS": ["JOSE", "JUNIOR", "GUIDO", "JHON"],
@@ -948,6 +975,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
