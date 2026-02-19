@@ -494,7 +494,7 @@ if st.session_state.rol == "admin":
                 st.info(f"📊 Ritmo actual:{round(ritmo_diario,1)} citas/día")
 
         # =====================================================
-        # ⭐ META (INTEGRADA A KPIs)
+        # ⭐ META (DENTRO DEL RESUMEN EJECUTIVO)
         # =====================================================
         df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
         total_validas = len(df_validas)
@@ -507,15 +507,16 @@ if st.session_state.rol == "admin":
         
         avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total>0 else 0
         
-        # ⭐ KPIs META EN MISMA GRILLA
-        cE, cF, cG, cH = st.columns(4)
+        # ⭐ INTEGRAR EN FILA KPI AVANZADOS
+        cA,cB,cC,cD,cE,cF = st.columns(6)
         
-        cE.metric("📅 Citas válidas", total_validas)
-        cF.metric("🎯 Meta", meta_total)
-        cG.metric("📈 Avance", f"{avance_meta_pct}%")
-        cH.metric("📊 Gap meta", max(meta_total-total_validas,0))
+        cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
+        cB.metric("⚠ % No Show", f"{no_show_pct}%")
+        cC.metric("📌 Pendientes", pendientes)
+        cD.metric("📈 Proyección fin mes", proyeccion)
+        cE.metric("🎯 Meta", meta_total)
+        cF.metric("📊 Avance meta", f"{avance_meta_pct}%")
         
-        # progreso meta
         if meta_total > 0:
             st.progress(min(total_validas/meta_total,1.0))
 
@@ -1106,6 +1107,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
