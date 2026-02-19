@@ -612,8 +612,75 @@ if st.session_state.rol == "admin":
                         df.to_csv(ARCHIVO_CITAS, index=False)
                         st.success("Cita eliminada")
                         st.rerun()
+    # =====================================================
+    # TAB 2 - PLANIFICACIÓN ANUAL
+    # =====================================================
+    with tab2:
+    
+        st.title("🎯 Planificación anual de citas")
+    
+        sede_vol = st.selectbox("Sede", SEDES)
+        año_plan = st.selectbox("Año", [datetime.today().year, datetime.today().year+1])
+    
+        # =============================
+        # BASE 12 MESES
+        # =============================
+        base = pd.DataFrame({
+            "Mes": list(range(1,13)),
+            "NombreMes": [calendar.month_name[m] for m in range(1,13)],
+            "Volumen": [0]*12,
+            "%Citas": [0.40]*12
+        })
+    
+        # =============================
+        # TIPADO SEGURO
+        # =============================
+        base["Volumen"] = pd.to_numeric(base["Volumen"], errors="coerce").fillna(0)
+        base["%Citas"] = pd.to_numeric(base["%Citas"], errors="coerce").fillna(0.40)
+    
+        base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).round().astype(int)
+    
+        # =============================
+        # EDITOR
+        # =============================
+        tabla = st.data_editor(
+            base[["Mes","NombreMes","Volumen","%Citas","MetaCitas"]],
+            num_rows="fixed",
+            use_container_width=True,
+            column_config={
+                "NombreMes": st.column_config.TextColumn("Mes", disabled=True),
+                "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True),
+                "%Citas": st.column_config.NumberColumn("% citas", min_value=0.0, max_value=1.0, step=0.05)
+            }
+        )
+    
+        # recalcular meta
+        tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).round().astype(int)
+    
+        # =============================
+        # GUARDAR
+        # =============================
+        if st.button("💾 Guardar planificación anual"):
+    
+            tabla["Sede"] = sede_vol
+            tabla["Año"] = año_plan
+    
+            df_volumen = df_volumen[
+                ~(
+                    (df_volumen["Sede"] == sede_vol) &
+                    (df_volumen["Año"] == año_plan)
+                )
+            ]
+    
+            df_volumen = pd.concat(
+                [df_volumen, tabla[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]],
+                ignore_index=True
+            )
+    
+            df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
+    
+            st.success("Planificación guardada correctamente")
 
-        
 # =============================
 # ASESOR
 # =============================
@@ -1097,6 +1164,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
