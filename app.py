@@ -576,6 +576,7 @@ if st.session_state.rol == "admin":
         html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
         
         for semana in cal:
+        for semana in cal:
             html += "<tr>"
             for dia in semana:
                 if dia == 0:
@@ -583,15 +584,9 @@ if st.session_state.rol == "admin":
                 else:
                     cant = conteo.get(dia,0)
         
-                    # ⭐ COLOR DINÁMICO
                     color = "#2ECC71" if cant > 0 else "#2C3E50"
         
-                    html += f"""
-                    <td style='padding:8px;border:1px solid #ddd;'>
-                    <b>{dia}</b><br>
-                    <span style='color:{color}; font-weight:600;'>{cant}</span>
-                    </td>
-                    """
+                    html += f"<td style='padding:8px;border:1px solid #ddd;'><b>{dia}</b><br><span style='color:{color}; font-weight:600;'>{cant}</span></td>"
             html += "</tr>"
         
         html += "</table>"
@@ -1195,6 +1190,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
