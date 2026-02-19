@@ -629,7 +629,7 @@ if st.session_state.rol == "admin":
     
         porcentaje_citas = 0.40
     
-        # ⭐ SESSION STATE PARA PERSISTENCIA
+        # ⭐ SESSION STATE
         if "plan_df" not in st.session_state:
             st.session_state.plan_df = pd.DataFrame({
                 "Mes": list(range(1,13)),
@@ -638,6 +638,11 @@ if st.session_state.rol == "admin":
                 "%Citas": [porcentaje_citas]*12,
                 "MetaCitas": [0]*12
             })
+    
+        # ⭐ RECALCULAR META ANTES DEL EDITOR (CLAVE)
+        st.session_state.plan_df["MetaCitas"] = (
+            st.session_state.plan_df["Volumen"].astype(float) * porcentaje_citas
+        ).round().astype(int)
     
         # =============================
         # EDITOR
@@ -653,9 +658,6 @@ if st.session_state.rol == "admin":
             },
             key="plan_editor"
         )
-    
-        # ⭐ RECALCULAR META
-        edited["MetaCitas"] = (edited["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
     
         # ⭐ ACTUALIZAR SESSION
         st.session_state.plan_df.update(edited)
@@ -1166,6 +1168,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
