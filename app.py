@@ -16,6 +16,7 @@ st.set_page_config(layout="wide")
 
 ARCHIVO_CITAS = "citas.csv"
 ARCHIVO_METAS = "metas.csv"
+ARCHIVO_VOLUMEN = "volumen.csv"
 
 # =============================
 # USUARIOS
@@ -242,6 +243,15 @@ if not os.path.exists(ARCHIVO_METAS):
     metas.to_csv(ARCHIVO_METAS,index=False)
 else:
     metas = pd.read_csv(ARCHIVO_METAS)
+
+# =============================
+# CREAR / CARGAR VOLUMEN
+# =============================
+if not os.path.exists(ARCHIVO_VOLUMEN):
+    df_volumen = pd.DataFrame(columns=["Sede","Fecha","VolumenMensual","MetaCitas"])
+    df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
+else:
+    df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
 
 # =============================
 # FUNCION DINAMICA
@@ -1136,6 +1146,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
