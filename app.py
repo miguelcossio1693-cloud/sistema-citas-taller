@@ -363,14 +363,12 @@ def mostrar_tablero(df_dia, sede):
 if st.session_state.rol == "admin":
 
     tab1, tab2 = st.tabs(["📊 Resumen Ejecutivo","🎯 Configurar Meta"])
+
     # =====================================================
     # TAB 1 - RESUMEN EJECUTIVO
     # =====================================================
     with tab1:
 
-        # ==============================
-        # HORA PERÚ
-        # ==============================
         zona_peru = pytz.timezone("America/Lima")
         hora_actual = datetime.now(zona_peru).strftime('%d/%m/%Y %H:%M:%S')
 
@@ -385,115 +383,115 @@ if st.session_state.rol == "admin":
 
         st.divider()
 
-        # ==============================
-        # SELECTOR SEDE ADMIN
-        # ==============================
-        st.subheader("🏢 Supervisión por sede")
-
-        sede_admin = st.selectbox(
-            "Seleccionar sede",
-            ["TODAS"] + SEDES,
-            key="admin_sede_selector"
-        )
-
-        if sede_admin == "TODAS":
-            df_admin_filtrado = df.copy()
-        else:
-            df_admin_filtrado = df[df["Sede"] == sede_admin].copy()
-
-        if df_admin_filtrado.empty:
-            st.warning("No hay registros")
-            st.stop()
-
-        df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"], errors="coerce")
-        df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
-
-        # ==============================
-        # SELECTORES FECHA
-        # ==============================
-        año_sel = st.selectbox(
-            "Año",
-            sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
-            key="admin_year"
-        )
-
-        mes_sel = st.selectbox(
-            "Mes",
-            list(range(1,13)),
-            index=datetime.today().month-1,
-            format_func=lambda x: calendar.month_name[x],
-            key="admin_month"
-        )
-
-        df_mes = df_admin_filtrado[
-            (df_admin_filtrado["Fecha"].dt.year == año_sel) &
-            (df_admin_filtrado["Fecha"].dt.month == mes_sel)
-        ]
-
         # =====================================================
-        # ⭐ KPIs INTELIGENTES
+        # ⭐ LAYOUT FILTROS + DASHBOARD
         # =====================================================
-        st.subheader("🌎 Indicadores Inteligentes")
-        
-        total_mes = len(df_mes)
-        efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
-        no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
-        reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
-        pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
-        
-        efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes>0 else 0
-        no_show_pct = round((no_show/total_mes)*100,1) if total_mes>0 else 0
-        
-        # ⭐ SEMÁFORO EFECTIVIDAD
-        if efectividad_pct >= 80:
-            semaforo = "🟢"
-        elif efectividad_pct >= 60:
-            semaforo = "🟡"
-        else:
-            semaforo = "🔴"
-        
-        # ⭐ PROYECCIÓN FIN DE MES
-        dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
-        dia_actual = datetime.today().day
-        ritmo_diario = total_mes/dia_actual if dia_actual>0 else 0
-        proyeccion = int(ritmo_diario*dias_mes)
-        
-        # ⭐ KPIs PRINCIPALES
-        c1,c2,c3,c4 = st.columns(4)
-        c1.metric("📅 Total citas", total_mes)
-        c2.metric("✅ Efectivas", efectivas)
-        c3.metric("❌ No Show", no_show)
-        c4.metric("🔄 Reprogramadas", reprogramadas)
-        
-        st.divider()
-        
-        # ⭐ KPIs AVANZADOS
-        cA,cB,cC,cD = st.columns(4)
-        cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
-        cB.metric("⚠ % No Show", f"{no_show_pct}%")
-        cC.metric("📌 Pendientes", pendientes)
-        cD.metric("📈 Proyección fin mes", proyeccion)
-        
-        # ⭐ PROGRESO EFECTIVIDAD
-        if total_mes>0:
-            st.progress(efectivas/total_mes)
-        
-        st.divider()
-        
-        # ⭐ INTERPRETACIÓN AUTOMÁTICA
-        if efectividad_pct < 60:
-            st.error("🚨 Riesgo alto: baja asistencia de clientes")
-        elif efectividad_pct < 80:
-            st.warning("⚠ Asistencia moderada: oportunidad de mejora")
-        else:
-            st.success("✅ Excelente nivel de asistencia")
-        
-        # ⭐ ALERTA NO SHOW
-        if no_show_pct > 20:
-            st.warning("⚠ Alto nivel de No Show detectado")
-        
-        # ⭐ RITMO OPERATIVO
-        st.info(f"📊 Ritmo actual: {round(ritmo_diario,1)} citas/día")
+        col_filtros, col_dashboard = st.columns([1,3])
+
+        # =============================
+        # FILTROS
+        # =============================
+        with col_filtros:
+
+            st.subheader("🎛 Filtros")
+
+            sede_admin = st.selectbox(
+                "Sede",
+                ["TODAS"] + SEDES,
+                key="admin_sede_selector"
+            )
+
+            if sede_admin == "TODAS":
+                df_admin_filtrado = df.copy()
+            else:
+                df_admin_filtrado = df[df["Sede"] == sede_admin].copy()
+
+            if df_admin_filtrado.empty:
+                st.warning("No hay registros")
+                st.stop()
+
+            df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"], errors="coerce")
+            df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
+
+            año_sel = st.selectbox(
+                "Año",
+                sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
+                key="admin_year"
+            )
+
+            mes_sel = st.selectbox(
+                "Mes",
+                list(range(1,13)),
+                index=datetime.today().month-1,
+                format_func=lambda x: calendar.month_name[x],
+                key="admin_month"
+            )
+
+        # =============================
+        # DASHBOARD
+        # =============================
+        with col_dashboard:
+
+            df_mes = df_admin_filtrado[
+                (df_admin_filtrado["Fecha"].dt.year == año_sel) &
+                (df_admin_filtrado["Fecha"].dt.month == mes_sel)
+            ]
+
+            st.subheader("🌎 Indicadores Inteligentes")
+
+            total_mes = len(df_mes)
+            efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
+            no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
+            reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
+            pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
+
+            efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes>0 else 0
+            no_show_pct = round((no_show/total_mes)*100,1) if total_mes>0 else 0
+
+            # ⭐ SEMÁFORO
+            if efectividad_pct >= 80:
+                semaforo = "🟢"
+            elif efectividad_pct >= 60:
+                semaforo = "🟡"
+            else:
+                semaforo = "🔴"
+
+            # ⭐ PROYECCIÓN
+            dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
+            dia_actual = datetime.today().day
+            ritmo_diario = total_mes/dia_actual if dia_actual>0 else 0
+            proyeccion = int(ritmo_diario*dias_mes)
+
+            c1,c2,c3,c4 = st.columns(4)
+            c1.metric("📅 Total citas", total_mes)
+            c2.metric("✅ Efectivas", efectivas)
+            c3.metric("❌ No Show", no_show)
+            c4.metric("🔄 Reprogramadas", reprogramadas)
+
+            st.divider()
+
+            cA,cB,cC,cD = st.columns(4)
+            cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
+            cB.metric("⚠ % No Show", f"{no_show_pct}%")
+            cC.metric("📌 Pendientes", pendientes)
+            cD.metric("📈 Proyección fin mes", proyeccion)
+
+            if total_mes>0:
+                st.progress(efectivas/total_mes)
+
+            st.divider()
+
+            if efectividad_pct < 60:
+                st.error("🚨 Riesgo alto: baja asistencia de clientes")
+            elif efectividad_pct < 80:
+                st.warning("⚠ Asistencia moderada: oportunidad de mejora")
+            else:
+                st.success("✅ Excelente nivel de asistencia")
+
+            if no_show_pct > 20:
+                st.warning("⚠ Alto nivel de No Show detectado")
+
+            st.info(f"📊 Ritmo actual: {round(ritmo_diario,1)} citas/día")
 
         # =====================================================
         # ⭐ META
@@ -1106,4 +1104,5 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
