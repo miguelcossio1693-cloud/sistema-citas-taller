@@ -626,24 +626,19 @@ if st.session_state.rol == "admin":
         # BASE 12 MESES
         # =============================
         base = pd.DataFrame({
+            "Mes": list(range(1,13)),  # ⭐ se mantiene pero no se mostrará
             "NombreMes": [calendar.month_name[m] for m in range(1,13)],
             "Volumen": [0]*12,
             "%Citas": [0.40]*12
         })
     
-        # =============================
-        # TIPADO SEGURO
-        # =============================
-        base["Volumen"] = pd.to_numeric(base["Volumen"], errors="coerce").fillna(0)
-        base["%Citas"] = pd.to_numeric(base["%Citas"], errors="coerce").fillna(0.40)
-    
         base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).round().astype(int)
     
         # =============================
-        # EDITOR
+        # EDITOR (SIN MOSTRAR Mes)
         # =============================
         tabla = st.data_editor(
-            base[["Mes","NombreMes","Volumen","%Citas","MetaCitas"]],
+            base[["NombreMes","Volumen","%Citas","MetaCitas"]],
             num_rows="fixed",
             use_container_width=True,
             column_config={
@@ -652,6 +647,9 @@ if st.session_state.rol == "admin":
                 "%Citas": st.column_config.NumberColumn("% citas", min_value=0.0, max_value=1.0, step=0.05)
             }
         )
+    
+        # ⭐ volver a insertar Mes para guardar
+        tabla["Mes"] = list(range(1,13))
     
         # recalcular meta
         tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).round().astype(int)
@@ -753,8 +751,7 @@ else:
                 placeholder="9XXXXXXXX",
             )
     
-            servicio = st.text_input(
-                "Tipo de Servicio",
+            servicio = st.text_input("Tipo de Servicio",
                 placeholder="Ej: Mantenimiento + cambio de pastillas",
             )
     
@@ -1163,6 +1160,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
