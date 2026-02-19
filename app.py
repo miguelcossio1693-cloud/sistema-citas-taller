@@ -494,28 +494,30 @@ if st.session_state.rol == "admin":
                 st.info(f"📊 Ritmo actual:{round(ritmo_diario,1)} citas/día")
 
         # =====================================================
-        # ⭐ META
+        # ⭐ META (INTEGRADA A KPIs)
         # =====================================================
         df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
         total_validas = len(df_validas)
-
+        
         if sede_admin == "TODAS":
             meta_total = metas["MetaMensual"].sum()
         else:
             fila_meta = metas[metas["Sede"] == sede_admin]
             meta_total = int(fila_meta["MetaMensual"].values[0]) if not fila_meta.empty else 0
-
+        
         avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total>0 else 0
-
-        m1,m2,m3 = st.columns(3)
-        m1.metric("📅 Citas válidas", total_validas)
-        m2.metric("🎯 Meta", meta_total)
-        m3.metric("📈 Avance", f"{avance_meta_pct}%")
-
-        if meta_total>0:
+        
+        # ⭐ KPIs META EN MISMA GRILLA
+        cE, cF, cG, cH = st.columns(4)
+        
+        cE.metric("📅 Citas válidas", total_validas)
+        cF.metric("🎯 Meta", meta_total)
+        cG.metric("📈 Avance", f"{avance_meta_pct}%")
+        cH.metric("📊 Gap meta", max(meta_total-total_validas,0))
+        
+        # progreso meta
+        if meta_total > 0:
             st.progress(min(total_validas/meta_total,1.0))
-
-        st.divider()
 
         # =====================================================
         # ⭐ DESCARGAR EXCEL
@@ -1104,6 +1106,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
