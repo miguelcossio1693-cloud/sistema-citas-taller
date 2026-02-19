@@ -549,17 +549,32 @@ if st.session_state.rol == "admin":
         # CALENDARIO
         # =====================================================
         st.subheader("📅 Calendario")
-
-        conteo = (
-            df_mes.groupby(df_mes["Fecha"].dt.day)["ID"].count().to_dict()
-            if not df_mes.empty else {}
+        
+        # ⭐ FILTRO SEDE CALENDARIO
+        sede_cal = st.selectbox(
+            "Filtrar sede calendario",
+            ["TODAS"] + SEDES,
+            key="admin_cal_sede"
         )
-
+        
+        # ⭐ FILTRAR DATA
+        if sede_cal == "TODAS":
+            df_cal = df_mes.copy()
+        else:
+            df_cal = df_mes[df_mes["Sede"] == sede_cal].copy()
+        
+        # ⭐ CONTEO
+        conteo = (
+            df_cal.groupby(df_cal["Fecha"].dt.day)["ID"].count().to_dict()
+            if not df_cal.empty else {}
+        )
+        
+        # ⭐ CALENDARIO (ESTO NO CAMBIA)
         cal = calendar.monthcalendar(año_sel, mes_sel)
-
+        
         html = "<table style='width:100%; text-align:center; border-collapse:collapse;'>"
         html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
-
+        
         for semana in cal:
             html += "<tr>"
             for dia in semana:
@@ -569,10 +584,9 @@ if st.session_state.rol == "admin":
                     cant = conteo.get(dia,0)
                     html += f"<td style='padding:8px;border:1px solid #ddd;'><b>{dia}</b><br>{cant}</td>"
             html += "</tr>"
-
+        
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
-
         st.divider()
 
         # =====================================================
@@ -1173,3 +1187,4 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
