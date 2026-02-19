@@ -474,20 +474,20 @@ if st.session_state.rol == "admin":
             avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total>0 else 0
         
             # ⭐ KPI PRINCIPALES
-            c1,c2,c3,c4 = st.columns(4)
+            c1,c2,c3,c4,c5 = st.columns(5)
             c1.metric("📅 Total citas", total_mes)
             c2.metric("✅ Efectivas", efectivas)
             c3.metric("❌ No Show", no_show)
             c4.metric("🔄 Reprogramadas", reprogramadas)
+            c5.metric("🎯 Meta", meta_total)            
         
             st.divider()
         
             # ⭐ KPI AVANZADOS + META (MISMA FILA)
-            cA,cB,cC,cD,cE = st.columns(5)
+            cA,cB,cC,cE = st.columns(5)
             cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
             cB.metric("⚠ % No Show", f"{no_show_pct}%")
             cC.metric("📈 Proyección fin mes", proyeccion)
-            cD.metric("🎯 Meta", meta_total)
             cE.metric("📊 Avance meta", f"{avance_meta_pct}%")
         
             if meta_total > 0:
@@ -1096,6 +1096,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
