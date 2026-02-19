@@ -660,10 +660,20 @@ if st.session_state.rol == "admin":
             },
             key="plan_editor"
         )
-    
-        # ⭐ ACTUALIZAR SOLO VOLUMEN (evita delay extra)
-        st.session_state.plan_df["Volumen"] = edited["Volumen"]
-    
+        
+        # ⭐ PREVIEW REACTIVO
+        preview = edited.copy()
+        preview["MetaCitas"] = (preview["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
+        
+        st.dataframe(
+            preview[["NombreMes","Volumen","%Citas","MetaCitas"]],
+            use_container_width=True
+        )
+        
+        # ⭐ ACTUALIZAR SOLO COLUMNAS NECESARIAS
+        st.session_state.plan_df["Volumen"] = preview["Volumen"].values
+        st.session_state.plan_df["MetaCitas"] = preview["MetaCitas"].values
+            
         # =============================
         # GUARDAR
         # =============================
@@ -1170,6 +1180,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
