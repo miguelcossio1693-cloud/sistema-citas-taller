@@ -402,40 +402,50 @@ if st.session_state.rol == "admin":
         # FILTROS
         # =============================
         with col_filtros:
-
+        
             st.subheader("🎛 Filtros")
-
+        
             sede_admin = st.selectbox(
                 "Sede",
                 ["TODAS"] + SEDES,
                 key="admin_sede_selector"
             )
-
+        
             if sede_admin == "TODAS":
                 df_admin_filtrado = df.copy()
             else:
                 df_admin_filtrado = df[df["Sede"] == sede_admin].copy()
-
+        
+            # ⭐ NO DETENER APP
             if df_admin_filtrado.empty:
-                st.warning("No hay registros")
-                st.stop()
-
-            df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"], errors="coerce")
-            df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
-
-            año_sel = st.selectbox(
-                "Año",
-                sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
-                key="admin_year"
+                st.warning("No hay registros para la sede seleccionada")
+                df_admin_filtrado = pd.DataFrame(columns=df.columns)
+        
+            # ⭐ FECHA SEGURA
+            df_admin_filtrado["Fecha"] = pd.to_datetime(
+                df_admin_filtrado["Fecha"], errors="coerce"
             )
-
-            mes_sel = st.selectbox(
-                "Mes",
-                list(range(1,13)),
-                index=datetime.today().month-1,
-                format_func=lambda x: calendar.month_name[x],
-                key="admin_month"
-            )
+        
+            # ⭐ SI NO HAY FECHAS → usar año actual
+            if df_admin_filtrado["Fecha"].dropna().empty:
+                año_sel = datetime.today().year
+                mes_sel = datetime.today().month
+            else:
+                df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
+        
+                año_sel = st.selectbox(
+                    "Año",
+                    sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
+                    key="admin_year"
+                )
+        
+                mes_sel = st.selectbox(
+                    "Mes",
+                    list(range(1,13)),
+                    index=datetime.today().month-1,
+                    format_func=lambda x: calendar.month_name[x],
+                    key="admin_month"
+                )
 
         # =============================
         # DASHBOARD
@@ -1146,6 +1156,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
