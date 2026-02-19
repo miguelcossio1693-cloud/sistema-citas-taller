@@ -629,7 +629,9 @@ if st.session_state.rol == "admin":
     
         porcentaje_citas = 0.40
     
-        # ⭐ SESSION STATE
+        # =============================
+        # INIT SESSION
+        # =============================
         if "plan_df" not in st.session_state:
             st.session_state.plan_df = pd.DataFrame({
                 "Mes": list(range(1,13)),
@@ -659,8 +661,8 @@ if st.session_state.rol == "admin":
             key="plan_editor"
         )
     
-        # ⭐ ACTUALIZAR SESSION
-        st.session_state.plan_df.update(edited)
+        # ⭐ ACTUALIZAR SOLO VOLUMEN (evita delay extra)
+        st.session_state.plan_df["Volumen"] = edited["Volumen"]
     
         # =============================
         # GUARDAR
@@ -1168,6 +1170,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
