@@ -576,7 +576,6 @@ if st.session_state.rol == "admin":
         html += "<tr><th>L</th><th>M</th><th>M</th><th>J</th><th>V</th><th>S</th><th>D</th></tr>"
         
         for semana in cal:
-        for semana in cal:
             html += "<tr>"
             for dia in semana:
                 if dia == 0:
@@ -1190,6 +1189,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
