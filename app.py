@@ -641,11 +641,6 @@ if st.session_state.rol == "admin":
                 "MetaCitas": [0]*12
             })
     
-        # ⭐ RECALCULAR META ANTES DEL EDITOR (CLAVE)
-        st.session_state.plan_df["MetaCitas"] = (
-            st.session_state.plan_df["Volumen"].astype(float) * porcentaje_citas
-        ).round().astype(int)
-    
         # =============================
         # EDITOR
         # =============================
@@ -660,20 +655,23 @@ if st.session_state.rol == "admin":
             },
             key="plan_editor"
         )
-        
-        # ⭐ PREVIEW REACTIVO
+    
+        # ⭐ LIMPIEZA NUMÉRICA
         preview = edited.copy()
-        preview["MetaCitas"] = (preview["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
-        
+        preview["Volumen"] = pd.to_numeric(preview["Volumen"], errors="coerce").fillna(0)
+    
+        # ⭐ CALCULO META (UNA SOLA VEZ)
+        preview["MetaCitas"] = (preview["Volumen"] * porcentaje_citas).round().astype(int)
+    
         st.dataframe(
             preview[["NombreMes","Volumen","%Citas","MetaCitas"]],
             use_container_width=True
         )
-        
-        # ⭐ ACTUALIZAR SOLO COLUMNAS NECESARIAS
+    
+        # ⭐ ACTUALIZAR SESSION
         st.session_state.plan_df["Volumen"] = preview["Volumen"].values
         st.session_state.plan_df["MetaCitas"] = preview["MetaCitas"].values
-            
+    
         # =============================
         # GUARDAR
         # =============================
@@ -1180,6 +1178,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
