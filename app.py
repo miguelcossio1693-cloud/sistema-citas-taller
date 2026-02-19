@@ -484,11 +484,11 @@ if st.session_state.rol == "admin":
             st.divider()
         
             # ⭐ KPI AVANZADOS + META (MISMA FILA)
-            cA,cB,cC,cE = st.columns(5)
+            cA,cB,cC,cD = st.columns(4)
             cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
             cB.metric("⚠ % No Show", f"{no_show_pct}%")
             cC.metric("📈 Proyección fin mes", proyeccion)
-            cE.metric("📊 Avance meta", f"{avance_meta_pct}%")
+            cD.metric("📊 Avance meta", f"{avance_meta_pct}%")
         
             if meta_total > 0:
                 st.progress(min(total_validas/meta_total,1.0))
@@ -1096,6 +1096,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
