@@ -579,7 +579,7 @@ if st.session_state.rol == "admin":
             html += "<tr>"
             for dia in semana:
                 if dia == 0:
-                    html += "<td></td>"
+                    html += "<td style='border:1px solid #ddd;'></td>"
                 else:
                     cant = conteo.get(dia,0)
         
@@ -596,8 +596,6 @@ if st.session_state.rol == "admin":
         
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
-        
-        st.divider()
 
         # =====================================================
         # 🔥 ELIMINACIÓN CITAS ADMIN
@@ -1197,6 +1195,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
