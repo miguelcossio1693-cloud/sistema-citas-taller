@@ -443,7 +443,6 @@ if st.session_state.rol == "admin":
             efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
             no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
             reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
-            pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
         
             efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes>0 else 0
             no_show_pct = round((no_show/total_mes)*100,1) if total_mes>0 else 0
@@ -487,7 +486,6 @@ if st.session_state.rol == "admin":
             cA,cB,cC,cD,cE,cF = st.columns(6)
             cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
             cB.metric("⚠ % No Show", f"{no_show_pct}%")
-            cC.metric("📌 Pendientes", pendientes)
             cD.metric("📈 Proyección fin mes", proyeccion)
             cE.metric("🎯 Meta", meta_total)
             cF.metric("📊 Avance meta", f"{avance_meta_pct}%")
@@ -1125,6 +1123,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
