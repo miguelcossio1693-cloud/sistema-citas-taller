@@ -3,9 +3,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import calendar
+import pytz
 from streamlit_autorefresh import st_autorefresh
 from io import BytesIO
-import pytz
 
 st.set_page_config(layout="wide")
 
@@ -592,27 +592,67 @@ if st.session_state.rol == "admin":
                         df.to_csv(ARCHIVO_CITAS, index=False)
                         st.success("Cita eliminada")
                         st.rerun()
-    # =====================================================
-    # TAB 2 - CONFIGURAR META
-    # =====================================================
-    with tab2:
-
-        st.title("🎯 Configurar Meta")
-
-        sede_meta = st.selectbox("Sede", SEDES, key="meta_sede")
-        nueva_meta = st.number_input("Meta mensual", 0, 1000, 0)
-
-        if st.button("Guardar Meta"):
-            metas = metas[metas["Sede"] != sede_meta]
-            metas = pd.concat([
-                metas,
-                pd.DataFrame([{
-                    "Sede": sede_meta,
-                    "MetaMensual": nueva_meta
+        # =====================================================
+        # TAB 2 - PLANIFICACIÓN DEMANDA (META AUTOMÁTICA)
+        # =====================================================
+        with tab2:
+        
+            st.title("🏭 Planificación de demanda y meta automática")
+        
+            # ⭐ CARGAR HISTORIAL
+            df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
+        
+            sede_vol = st.selectbox("Sede", SEDES, key="vol_sede")
+        
+            volumen = st.number_input(
+                "Volumen mensual de atenciones del taller",
+                0, 10000, 0,
+                help="Total de atenciones requeridas por el taller"
+            )
+        
+            # ⭐ META AUTOMÁTICA 40%
+            meta_citas = int(volumen * 0.40)
+        
+            st.metric("🎯 Meta automática de citas (40%)", meta_citas)
+        
+            if st.button("Guardar planificación"):
+        
+                # ⭐ GUARDAR HISTORIAL
+                nuevo = pd.DataFrame([{
+                    "Sede": sede_vol,
+                    "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "VolumenMensual": volumen,
+                    "MetaCitas": meta_citas
                 }])
-            ])
-            metas.to_csv(ARCHIVO_METAS, index=False)
-            st.success("Meta guardada correctamente")
+        
+                df_volumen = pd.concat([df_volumen, nuevo])
+                df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
+        
+                # ⭐ ACTUALIZAR metas.csv AUTOMÁTICAMENTE
+                metas = metas[metas["Sede"] != sede_vol]
+        
+                metas = pd.concat([
+                    metas,
+                    pd.DataFrame([{
+                        "Sede": sede_vol,
+                        "MetaMensual": meta_citas
+                    }])
+                ])
+        
+                metas.to_csv(ARCHIVO_METAS, index=False)
+        
+                st.success("Planificación guardada y meta actualizada")
+        
+            st.divider()
+        
+            # ⭐ HISTORIAL
+            st.subheader("📜 Historial planificación")
+        
+            if df_volumen.empty:
+                st.info("Sin registros")
+            else:
+                df_hist = df_volumen[df_volumen["Sede"] == sede_vol]
+                st.dataframe(df_hist, use_container_width=True)
 # =============================
 # ASESOR
 # =============================
@@ -1096,6 +1136,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
