@@ -481,17 +481,17 @@ if st.session_state.rol == "admin":
 
             st.divider()
 
-            if efectividad_pct < 60:
-                st.error("🚨 Riesgo alto: baja asistencia de clientes")
-            elif efectividad_pct < 80:
-                st.warning("⚠ Asistencia moderada: oportunidad de mejora")
-            else:
-                st.success("✅ Excelente nivel de asistencia")
-
-            if no_show_pct > 20:
-                st.warning("⚠ Alto nivel de No Show detectado")
-
-            st.info(f"📊 Ritmo actual: {round(ritmo_diario,1)} citas/día")
+            col_alerta, col_ritmo = st.columns([2,1])
+            with col_alerta:
+                if efectividad_pct < 60:
+                    st.error("🚨 Riesgo alto: baja asistencia")
+                elif efectividad_pct < 80:
+                    st.warning("⚠ Asistencia moderada")
+                else:
+                    st.success("✅ Excelente asistencia")
+            
+            with col_ritmo:
+                st.info(f"📊 {round(ritmo_diario,1)} citas/día")
 
         # =====================================================
         # ⭐ META
@@ -1104,5 +1104,6 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
