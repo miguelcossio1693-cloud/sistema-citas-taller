@@ -670,31 +670,39 @@ if st.session_state.rol == "admin":
                 base["%Citas"] = base["%Citas_old"].fillna(base["%Citas"])
                 base.drop(columns=["Volumen_old","%Citas_old"], inplace=True)
         
-            # ⭐ META AUTOMÁTICA
+            # ⭐ META AUTOMÁTICA BASE
             base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).astype(int)
-        
+            
             # ⭐ EDITOR LIMPIO
             tabla = st.data_editor(
-                base[["Mes","NombreMes","Volumen","%Citas","MetaCitas"]],
+                base[["Mes","NombreMes","Volumen","%Citas"]],
                 num_rows="fixed",
                 use_container_width=True,
                 column_config={
                     "NombreMes": st.column_config.TextColumn("Mes", disabled=True),
-                    "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True)
+                    "%Citas": st.column_config.NumberColumn("% citas", min_value=0.0, max_value=1.0, step=0.05)
                 }
             )
-        
-            # ⭐ RECALCULAR META POST EDICIÓN
+            
+            # ⭐ TIPADO SEGURO
+            tabla["Volumen"] = pd.to_numeric(tabla["Volumen"], errors="coerce").fillna(0)
+            tabla["%Citas"] = pd.to_numeric(tabla["%Citas"], errors="coerce").fillna(0.40)
+            
+            # ⭐ META POST EDICIÓN
             tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).astype(int)
-        
-            st.dataframe(tabla[["NombreMes","Volumen","%Citas","MetaCitas"]], use_container_width=True)
-        
+            
+            # ⭐ MOSTRAR TABLA FINAL
+            st.dataframe(
+                tabla[["NombreMes","Volumen","%Citas","MetaCitas"]],
+                use_container_width=True
+            )
+            
             # ⭐ GUARDAR
             if st.button("💾 Guardar planificación anual"):
-        
+            
                 tabla["Sede"] = sede_vol
                 tabla["Año"] = año_plan
-        
+            
                 # eliminar anteriores
                 df_volumen = df_volumen[
                     ~(
@@ -702,24 +710,27 @@ if st.session_state.rol == "admin":
                         (df_volumen["Año"] == año_plan)
                     )
                 ]
-        
-                df_volumen = pd.concat([df_volumen, tabla[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]])
+            
+                # guardar limpio
+                df_volumen = pd.concat(
+                    [df_volumen, tabla[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]],
+                    ignore_index=True
+                )
+            
                 df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
-        
-                # ⭐ actualizar meta mensual actual
+            
+                # ⭐ meta mes actual
                 mes_actual = datetime.today().month
                 meta_mes = tabla.loc[tabla["Mes"] == mes_actual, "MetaCitas"].values[0]
-        
+            
                 metas = metas[metas["Sede"] != sede_vol]
                 metas = pd.concat([
                     metas,
-                    pd.DataFrame([{
-                        "Sede": sede_vol,
-                        "MetaMensual": meta_mes
-                    }])
-                ])
+                    pd.DataFrame([{"Sede": sede_vol, "MetaMensual": meta_mes}])
+                ], ignore_index=True)
+            
                 metas.to_csv(ARCHIVO_METAS, index=False)
-        
+            
                 st.success("Planificación guardada y meta actualizada")
 
 # =============================
@@ -1205,6 +1216,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
