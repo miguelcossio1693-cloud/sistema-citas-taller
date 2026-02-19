@@ -467,7 +467,7 @@ if st.session_state.rol == "admin":
         # =====================================================
         st.subheader("⬇ Exportar reporte")
 
-        excel_file = generar_excel(df_mes,"Reporte Ejecutivo")
+        excel_file = generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel)
 
         st.download_button(
             label="📥 Descargar Excel",
@@ -1041,6 +1041,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
