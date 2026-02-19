@@ -613,66 +613,88 @@ if st.session_state.rol == "admin":
                         st.success("Cita eliminada")
                         st.rerun()
         # =====================================================
-        # TAB 2 - PLANIFICACIÓN DEMANDA (META AUTOMÁTICA)
+        # TAB 2 - PLANIFICACIÓN DEMANDA ANUAL
         # =====================================================
         with tab2:
         
-            st.title("🏭 Planificación de demanda y meta automática")
+            st.title("🏭 Planificación anual de demanda y metas")
+        
+            col1, col2 = st.columns(2)
+        
+            with col1:
+                sede_vol = st.selectbox("Sede", SEDES, key="plan_sede")
+        
+            with col2:
+                año_plan = st.selectbox(
+                    "Año planificación",
+                    [datetime.today().year, datetime.today().year + 1],
+                    key="plan_year"
+                )
         
             # ⭐ CARGAR HISTORIAL
             df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
         
-            sede_vol = st.selectbox("Sede", SEDES, key="vol_sede")
+            # ⭐ BASE MENSUAL
+            base = pd.DataFrame({
+                "Mes": list(range(1,13)),
+                "Volumen": [0]*12,
+                "%Citas": [0.40]*12
+            })
         
-            volumen = st.number_input(
-                "Volumen mensual de atenciones del taller",
-                0, 10000, 0,
-                help="Total de atenciones requeridas por el taller"
+            # ⭐ CARGAR REGISTROS EXISTENTES
+            df_exist = df_volumen[
+                (df_volumen["Sede"] == sede_vol) &
+                (df_volumen["Año"] == año_plan)
+            ]
+        
+            if not df_exist.empty:
+                base.update(df_exist[["Mes","Volumen","%Citas"]])
+        
+            # ⭐ EDITOR
+            tabla = st.data_editor(
+                base,
+                num_rows="fixed",
+                use_container_width=True
             )
         
-            # ⭐ META AUTOMÁTICA 40%
-            meta_citas = int(volumen * 0.40)
+            # ⭐ CALCULAR META
+            tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).astype(int)
         
-            st.metric("🎯 Meta automática de citas (40%)", meta_citas)
+            st.dataframe(tabla, use_container_width=True)
         
-            if st.button("Guardar planificación"):
+            # ⭐ GUARDAR
+            if st.button("💾 Guardar planificación anual"):
         
-                # ⭐ GUARDAR HISTORIAL
-                nuevo = pd.DataFrame([{
-                    "Sede": sede_vol,
-                    "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "VolumenMensual": volumen,
-                    "MetaCitas": meta_citas
-                }])
+                tabla["Sede"] = sede_vol
+                tabla["Año"] = año_plan
         
-                df_volumen = pd.concat([df_volumen, nuevo])
+                # eliminar registros previos
+                df_volumen = df_volumen[
+                    ~(
+                        (df_volumen["Sede"] == sede_vol) &
+                        (df_volumen["Año"] == año_plan)
+                    )
+                ]
+        
+                df_volumen = pd.concat([df_volumen, tabla])
                 df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
         
-                # ⭐ ACTUALIZAR metas.csv AUTOMÁTICAMENTE
-                metas = metas[metas["Sede"] != sede_vol]
+                # ⭐ actualizar metas.csv con mes actual
+                mes_actual = datetime.today().month
+                meta_mes = tabla.loc[tabla["Mes"] == mes_actual, "MetaCitas"].values[0]
         
+                metas = metas[metas["Sede"] != sede_vol]
                 metas = pd.concat([
                     metas,
                     pd.DataFrame([{
                         "Sede": sede_vol,
-                        "MetaMensual": meta_citas
+                        "MetaMensual": meta_mes
                     }])
                 ])
-        
                 metas.to_csv(ARCHIVO_METAS, index=False)
         
                 st.success("Planificación guardada y meta actualizada")
-        
-            st.divider()
-        
-            # ⭐ HISTORIAL
-            st.subheader("📜 Historial planificación")
-        
-            if df_volumen.empty:
-                st.info("Sin registros")
-            else:
-                df_hist = df_volumen[df_volumen["Sede"] == sede_vol]
-                st.dataframe(df_hist, use_container_width=True)
+
 # =============================
 # ASESOR
 # =============================
@@ -1156,6 +1178,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
