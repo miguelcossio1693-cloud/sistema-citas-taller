@@ -437,7 +437,7 @@ if st.session_state.rol == "admin":
                 (df_admin_filtrado["Fecha"].dt.month == mes_sel)
             ]
 
-            st.subheader("🌎 Indicadores Inteligentes")
+            st.subheader("🌎 Resumen Ejecutivo")
 
             total_mes = len(df_mes)
             efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
@@ -491,7 +491,7 @@ if st.session_state.rol == "admin":
                     st.success("✅ Excelente asistencia")
             
             with col_ritmo:
-                st.info(f"📊 {round(ritmo_diario,1)} citas/día")
+                st.info(f"📊 Ritmo actual:{round(ritmo_diario,1)} citas/día")
 
         # =====================================================
         # ⭐ META
@@ -1104,6 +1104,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
