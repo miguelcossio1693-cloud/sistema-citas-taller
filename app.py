@@ -655,19 +655,14 @@ if st.session_state.rol == "admin":
             },
             key="plan_editor"
         )
-    
+        
         # ⭐ LIMPIEZA NUMÉRICA
         preview = edited.copy()
         preview["Volumen"] = pd.to_numeric(preview["Volumen"], errors="coerce").fillna(0)
-    
-        # ⭐ CALCULO META (UNA SOLA VEZ)
+        
+        # ⭐ CALCULO META
         preview["MetaCitas"] = (preview["Volumen"] * porcentaje_citas).round().astype(int)
-    
-        st.dataframe(
-            preview[["NombreMes","Volumen","%Citas","MetaCitas"]],
-            use_container_width=True
-        )
-    
+        
         # ⭐ ACTUALIZAR SESSION
         st.session_state.plan_df["Volumen"] = preview["Volumen"].values
         st.session_state.plan_df["MetaCitas"] = preview["MetaCitas"].values
@@ -1178,10 +1173,3 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
-
-
-
-
-
-
-
