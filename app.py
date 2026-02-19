@@ -623,11 +623,19 @@ if st.session_state.rol == "admin":
         año_plan = st.selectbox("Año", [datetime.today().year, datetime.today().year+1])
     
         # =============================
-        # BASE 12 MESES
+        # LISTA MESES EN ESPAÑOL
+        # =============================
+        meses_es = [
+            "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+            "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+        ]
+    
+        # =============================
+        # BASE
         # =============================
         base = pd.DataFrame({
-            "Mes": list(range(1,13)),  # ⭐ se mantiene pero no se mostrará
-            "NombreMes": [calendar.month_name[m] for m in range(1,13)],
+            "Mes": list(range(1,13)),   # interno
+            "NombreMes": meses_es,      # visible
             "Volumen": [0]*12,
             "%Citas": [0.40]*12
         })
@@ -635,7 +643,7 @@ if st.session_state.rol == "admin":
         base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).round().astype(int)
     
         # =============================
-        # EDITOR (SIN MOSTRAR Mes)
+        # EDITOR (sin mostrar Mes)
         # =============================
         tabla = st.data_editor(
             base[["NombreMes","Volumen","%Citas","MetaCitas"]],
@@ -648,7 +656,7 @@ if st.session_state.rol == "admin":
             }
         )
     
-        # ⭐ volver a insertar Mes para guardar
+        # volver a insertar Mes
         tabla["Mes"] = list(range(1,13))
     
         # recalcular meta
@@ -1158,32 +1166,3 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
