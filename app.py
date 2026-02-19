@@ -642,7 +642,7 @@ if st.session_state.rol == "admin":
             "%Citas": [porcentaje_citas]*12
         })
     
-        base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).round().astype(int)
+        base["MetaCitas"] = (base["Volumen"] * porcentaje_citas).round().astype(int)
     
         # =============================
         # EDITOR
@@ -653,16 +653,17 @@ if st.session_state.rol == "admin":
             use_container_width=True,
             column_config={
                 "NombreMes": st.column_config.TextColumn("Mes", disabled=True),
-                "%Citas": st.column_config.NumberColumn("% citas", disabled=True),  # ⭐ visible pero bloqueado
+                "%Citas": st.column_config.NumberColumn("% citas", disabled=True),
                 "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True)
-            }
+            },
+            key="plan_editor"
         )
     
-        # volver a insertar Mes
+        # ⭐ REINSERTAR MES (oculto)
         tabla["Mes"] = list(range(1,13))
     
-        # recalcular meta
-        tabla["MetaCitas"] = (tabla["Volumen"] * porcentaje_citas).round().astype(int)
+        # ⭐ RECALCULAR META (SOLUCION BUG STREAMLIT)
+        tabla["MetaCitas"] = (tabla["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
     
         # =============================
         # GUARDAR
@@ -1168,4 +1169,5 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
