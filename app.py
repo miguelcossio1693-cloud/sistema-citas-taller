@@ -622,33 +622,28 @@ if st.session_state.rol == "admin":
         sede_vol = st.selectbox("Sede", SEDES)
         año_plan = st.selectbox("Año", [datetime.today().year, datetime.today().year+1])
     
-        # =============================
-        # MESES EN ESPAÑOL
-        # =============================
         meses_es = [
             "Enero","Febrero","Marzo","Abril","Mayo","Junio",
             "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
         ]
     
-        porcentaje_citas = 0.40  # ⭐ fijo
+        porcentaje_citas = 0.40
     
-        # =============================
-        # BASE
-        # =============================
-        base = pd.DataFrame({
-            "Mes": list(range(1,13)),
-            "NombreMes": meses_es,
-            "Volumen": [0]*12,
-            "%Citas": [porcentaje_citas]*12
-        })
-    
-        base["MetaCitas"] = (base["Volumen"] * porcentaje_citas).round().astype(int)
+        # ⭐ SESSION STATE PARA PERSISTENCIA
+        if "plan_df" not in st.session_state:
+            st.session_state.plan_df = pd.DataFrame({
+                "Mes": list(range(1,13)),
+                "NombreMes": meses_es,
+                "Volumen": [0]*12,
+                "%Citas": [porcentaje_citas]*12,
+                "MetaCitas": [0]*12
+            })
     
         # =============================
         # EDITOR
         # =============================
-        tabla = st.data_editor(
-            base[["NombreMes","Volumen","%Citas","MetaCitas"]],
+        edited = st.data_editor(
+            st.session_state.plan_df[["NombreMes","Volumen","%Citas","MetaCitas"]],
             num_rows="fixed",
             use_container_width=True,
             column_config={
@@ -659,19 +654,21 @@ if st.session_state.rol == "admin":
             key="plan_editor"
         )
     
-        # ⭐ REINSERTAR MES (oculto)
-        tabla["Mes"] = list(range(1,13))
+        # ⭐ RECALCULAR META
+        edited["MetaCitas"] = (edited["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
     
-        # ⭐ RECALCULAR META (SOLUCION BUG STREAMLIT)
-        tabla["MetaCitas"] = (tabla["Volumen"].astype(float) * porcentaje_citas).round().astype(int)
+        # ⭐ ACTUALIZAR SESSION
+        st.session_state.plan_df.update(edited)
     
         # =============================
         # GUARDAR
         # =============================
         if st.button("💾 Guardar planificación anual"):
     
-            tabla["Sede"] = sede_vol
-            tabla["Año"] = año_plan
+            guardar = st.session_state.plan_df.copy()
+    
+            guardar["Sede"] = sede_vol
+            guardar["Año"] = año_plan
     
             df_volumen = df_volumen[
                 ~(
@@ -681,7 +678,7 @@ if st.session_state.rol == "admin":
             ]
     
             df_volumen = pd.concat(
-                [df_volumen, tabla[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]],
+                [df_volumen, guardar[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]],
                 ignore_index=True
             )
     
@@ -1169,5 +1166,6 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
