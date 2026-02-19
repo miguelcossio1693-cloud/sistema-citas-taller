@@ -679,7 +679,6 @@ if st.session_state.rol == "admin":
         
             meta_mes = int(fila_mes["MetaCitas"].iloc[0]) if not fila_mes.empty else 0
         
-            metas = me
 # =============================
 # ASESOR
 # =============================
@@ -1163,6 +1162,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
