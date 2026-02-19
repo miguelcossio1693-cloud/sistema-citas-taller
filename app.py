@@ -431,34 +431,69 @@ if st.session_state.rol == "admin":
         ]
 
         # =====================================================
-        # ⭐ KPIs COMPLETOS
+        # ⭐ KPIs INTELIGENTES
         # =====================================================
-        st.subheader("🌎 Indicadores")
-
+        st.subheader("🌎 Indicadores Inteligentes")
+        
         total_mes = len(df_mes)
         efectivas = len(df_mes[df_mes["Estado"] == "Asistió"])
         no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
         reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
-
+        pendientes = len(df_mes[df_mes["Estado"] == "Pendiente"])
+        
         efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes>0 else 0
         no_show_pct = round((no_show/total_mes)*100,1) if total_mes>0 else 0
-
+        
+        # ⭐ SEMÁFORO EFECTIVIDAD
+        if efectividad_pct >= 80:
+            semaforo = "🟢"
+        elif efectividad_pct >= 60:
+            semaforo = "🟡"
+        else:
+            semaforo = "🔴"
+        
+        # ⭐ PROYECCIÓN FIN DE MES
+        dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
+        dia_actual = datetime.today().day
+        ritmo_diario = total_mes/dia_actual if dia_actual>0 else 0
+        proyeccion = int(ritmo_diario*dias_mes)
+        
+        # ⭐ KPIs PRINCIPALES
         c1,c2,c3,c4 = st.columns(4)
-        c1.metric("📅 Total", total_mes)
+        c1.metric("📅 Total citas", total_mes)
         c2.metric("✅ Efectivas", efectivas)
         c3.metric("❌ No Show", no_show)
         c4.metric("🔄 Reprogramadas", reprogramadas)
-
+        
         st.divider()
-
-        cA,cB = st.columns(2)
-        cA.metric("🎯 % Efectividad", f"{efectividad_pct}%")
+        
+        # ⭐ KPIs AVANZADOS
+        cA,cB,cC,cD = st.columns(4)
+        cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
         cB.metric("⚠ % No Show", f"{no_show_pct}%")
-
+        cC.metric("📌 Pendientes", pendientes)
+        cD.metric("📈 Proyección fin mes", proyeccion)
+        
+        # ⭐ PROGRESO EFECTIVIDAD
         if total_mes>0:
             st.progress(efectivas/total_mes)
-
+        
         st.divider()
+        
+        # ⭐ INTERPRETACIÓN AUTOMÁTICA
+        if efectividad_pct < 60:
+            st.error("🚨 Riesgo alto: baja asistencia de clientes")
+        elif efectividad_pct < 80:
+            st.warning("⚠ Asistencia moderada: oportunidad de mejora")
+        else:
+            st.success("✅ Excelente nivel de asistencia")
+        
+        # ⭐ ALERTA NO SHOW
+        if no_show_pct > 20:
+            st.warning("⚠ Alto nivel de No Show detectado")
+        
+        # ⭐ RITMO OPERATIVO
+        st.info(f"📊 Ritmo actual: {round(ritmo_diario,1)} citas/día")
 
         # =====================================================
         # ⭐ META
@@ -1071,3 +1106,4 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
