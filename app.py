@@ -626,7 +626,6 @@ if st.session_state.rol == "admin":
         # BASE 12 MESES
         # =============================
         base = pd.DataFrame({
-            "Mes": list(range(1,13)),
             "NombreMes": [calendar.month_name[m] for m in range(1,13)],
             "Volumen": [0]*12,
             "%Citas": [0.40]*12
@@ -1164,6 +1163,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
