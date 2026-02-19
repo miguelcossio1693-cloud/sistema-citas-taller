@@ -37,7 +37,7 @@ SEDES = ["TARAPOTO","JAEN","BAGUA","MOYOBAMBA","IQUITOS PROSPERO","IQUITOS QUIÑ
 # =============================
 # FUNCION EXPORTAR EXCEL EJECUTIVO
 # =============================
-def generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel):
+def generar_excel_ejecutivo(df_mes, metas, anio_sel, mes_sel):
 
     output = BytesIO()
 
@@ -98,20 +98,27 @@ def generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel):
             citas_validas = len(df_sede[df_sede["Estado"].isin(["Pendiente","Asistió"])])
             avance_meta = round((citas_validas/meta_sede)*100,1) if meta_sede>0 else 0
 
-            resumen_sedes.append({"Sede": sede, "Total Citas": total_sede, "Efectivas": efectivas_sede, "No Show": no_show_sede, "% Efectividad": f"{efectividad_sede_pct}%", "Meta": meta_sede, "Avance Meta %": f"{avance_meta}%"})
+            resumen_sedes.append({
+                "Sede": sede,
+                "Total Citas": total_sede,
+                "Efectivas": efectivas_sede,
+                "No Show": no_show_sede,
+                "% Efectividad": f"{efectividad_sede_pct}%",
+                "Meta": meta_sede,
+                "Avance Meta %": f"{avance_meta}%"
+            })
 
-        df_resumen_sedes = pd.DataFrame(resumen_sedes)
-        df_resumen_sedes.to_excel(writer, index=False, sheet_name="Resumen por Sede")
+        pd.DataFrame(resumen_sedes).to_excel(writer, index=False, sheet_name="Resumen por Sede")
 
         # =============================
-        # HOJA 3 - DETALLE COMPLETO
+        # HOJA 3 - DETALLE
         # =============================
         df_detalle = df_mes.copy()
 
         if "Fecha" in df_detalle.columns:
             df_detalle["Fecha"] = pd.to_datetime(df_detalle["Fecha"]).dt.strftime("%d/%m/%Y")
 
-        columnas_orden = [
+        columnas = [
             "ID","Sede","Fecha","Hora","Tecnico",
             "Nombre","Celular",
             "Placa","Modelo",
@@ -119,10 +126,8 @@ def generar_excel_ejecutivo(df_mes, metas, año_sel, mes_sel):
             "Estado","Reprogramada"
         ]
 
-        columnas_validas = [c for c in columnas_orden if c in df_detalle.columns]
-        df_detalle = df_detalle[columnas_validas]
-
-        df_detalle.to_excel(writer, index=False, sheet_name="Detalle Citas")
+        columnas_validas = [c for c in columnas if c in df_detalle.columns]
+        df_detalle[columnas_validas].to_excel(writer, index=False, sheet_name="Detalle Citas")
 
     output.seek(0)
     return output
@@ -188,33 +193,46 @@ COLORES = {
 }
 
 # =============================
-# CREAR / CARGAR ARCHIVO CITAS
+# CREAR / CARGAR ARCHIVO CITAS (PRO)
 # =============================
+columnas_base = [
+    "ID","Sede","Fecha","Hora","Tecnico",
+    "Placa","Modelo","Nombre","Celular",
+    "TipoServicio","Duracion",
+    "Estado","Reprogramada"
+]
+
 if not os.path.exists(ARCHIVO_CITAS):
 
-    df = pd.DataFrame(columns=[
-        "ID","Sede","Fecha","Hora","Tecnico",
-        "Placa","Modelo","Nombre","Celular",
-        "TipoServicio","Duracion",
-        "Estado","Reprogramada"
-    ])
-
-    df.to_csv(ARCHIVO_CITAS,index=False)
+    df = pd.DataFrame(columns=columnas_base)
+    df.to_csv(ARCHIVO_CITAS, index=False)
 
 else:
-    df = pd.read_csv(ARCHIVO_CITAS)
+    # 🔥 cargar todo como texto evita corrupción de tipos
+    df = pd.read_csv(ARCHIVO_CITAS, dtype=str)
 
 # =============================
-# NORMALIZAR COLUMNAS
+# NORMALIZAR COLUMNAS (PRO)
 # =============================
-if "Estado" not in df.columns:
-    df["Estado"] = "Pendiente"
+for c in columnas_base:
+    if c not in df.columns:
+        df[c] = ""
 
-if "Reprogramada" not in df.columns:
-    df["Reprogramada"] = "No"
+# valores por defecto
+df["Estado"] = df["Estado"].replace("", "Pendiente")
+df["Reprogramada"] = df["Reprogramada"].replace("", "No")
 
+# limpiar espacios
+df["Hora"] = df["Hora"].astype(str).str.strip()
+df["Tecnico"] = df["Tecnico"].astype(str).str.strip()
+df["Sede"] = df["Sede"].astype(str).str.strip()
+
+# tipado seguro
 df["ID"] = pd.to_numeric(df["ID"], errors="coerce").fillna(0).astype(int)
 df["Duracion"] = pd.to_numeric(df["Duracion"], errors="coerce").fillna(1).astype(int)
+
+# copia segura para evitar bugs streamlit
+df = df.copy()
 
 # =============================
 # CREAR / CARGAR METAS
@@ -289,6 +307,7 @@ def mostrar_tablero(df_dia, sede):
     # Mostrar solo citas pendientes
     if "Estado" in df_dia.columns:
         df_dia = df_dia[df_dia["Estado"] == "Pendiente"]
+        df_dia = df_dia.sort_values("Hora")
 
     tecnicos = obtener_tecnicos(sede)
 
@@ -309,6 +328,8 @@ def mostrar_tablero(df_dia, sede):
         for tecnico in tecnicos:
             ocupado = False
             for _, row in df_dia.iterrows():
+                if not row["Hora"]:
+                    continue
                 inicio = datetime.strptime(row["Hora"], "%H:%M")
                 fin = inicio + timedelta(hours=row["Duracion"])
                 actual = datetime.strptime(hora, "%H:%M")
@@ -384,7 +405,8 @@ if st.session_state.rol == "admin":
             st.warning("No hay registros")
             st.stop()
 
-        df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"])
+        df_admin_filtrado["Fecha"] = pd.to_datetime(df_admin_filtrado["Fecha"], errors="coerce")
+        df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
 
         # ==============================
         # SELECTORES FECHA
@@ -617,7 +639,7 @@ else:
                 "Placa",
                 max_chars=8,
                 placeholder="Ej: ABC123",
-            )
+            ).upper()
     
             modelo = st.text_input(
                 "Modelo",
@@ -669,7 +691,11 @@ else:
                 (df_temp["Fecha"] == fecha) &
                 (df_temp["Estado"].isin(["Pendiente","Asistió"]))
             ]
-    
+            dup = df_dia[df_dia["Celular"] == celular]
+            if not dup.empty:
+                st.warning("Cliente ya tiene cita ese día")
+                st.stop()
+
             inicio_nuevo = datetime.strptime(hora,"%H:%M")
             fin_nuevo = inicio_nuevo + timedelta(hours=duracion)
     
@@ -733,13 +759,13 @@ else:
     
         fecha_gestion = st.date_input(
             "Seleccionar fecha",
-            value=datetime.now(),
+            value=datetime.now().date(),
             key="filtro_gestion"
         )
     
         df_sede = df[df["Sede"] == st.session_state.sede].copy()
-        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"]).dt.date
-    
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"], errors="coerce").dt.date
+        df_sede = df_sede.dropna(subset=["Fecha"])
         df_filtrado = df_sede[df_sede["Fecha"] == fecha_gestion]
     
         if df_filtrado.empty:
@@ -795,13 +821,16 @@ else:
                             nuevo_nombre = st.text_input("Cliente", value=row["Nombre"], key=f"edit_nombre_{row['ID']}")
                             nuevo_servicio = st.text_input("Servicio", value=row["TipoServicio"], key=f"edit_serv_{row['ID']}")
     
+                            horas_lista = [f"{h:02d}:00" for h in range(8,19)]
+                            index_hora = horas_lista.index(row["Hora"]) if row["Hora"] in horas_lista else 0
+                            
                             nueva_hora = st.selectbox(
                                 "Hora",
-                                [f"{h:02d}:00" for h in range(8,19)],
-                                index=[f"{h:02d}:00" for h in range(8,19)].index(row["Hora"]),
+                                horas_lista,
+                                index=index_hora,
                                 key=f"edit_hora_{row['ID']}"
                             )
-    
+
                             nueva_duracion = st.number_input(
                                 "Duración (horas)",
                                 min_value=1,
@@ -953,7 +982,8 @@ else:
         st.title("📈 Mi Avance")
     
         df_sede = df[df["Sede"] == st.session_state.sede].copy()
-        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"])
+        df_sede["Fecha"] = pd.to_datetime(df_sede["Fecha"], errors="coerce")
+        df_sede = df_sede.dropna(subset=["Fecha"])
     
         # ================================
         # SELECTORES
@@ -1041,20 +1071,3 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
