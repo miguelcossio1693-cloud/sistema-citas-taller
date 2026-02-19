@@ -623,27 +623,29 @@ if st.session_state.rol == "admin":
         año_plan = st.selectbox("Año", [datetime.today().year, datetime.today().year+1])
     
         # =============================
-        # LISTA MESES EN ESPAÑOL
+        # MESES EN ESPAÑOL
         # =============================
         meses_es = [
             "Enero","Febrero","Marzo","Abril","Mayo","Junio",
             "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
         ]
     
+        porcentaje_citas = 0.40  # ⭐ fijo
+    
         # =============================
         # BASE
         # =============================
         base = pd.DataFrame({
-            "Mes": list(range(1,13)),   # interno
-            "NombreMes": meses_es,      # visible
+            "Mes": list(range(1,13)),
+            "NombreMes": meses_es,
             "Volumen": [0]*12,
-            "%Citas": [0.40]*12
+            "%Citas": [porcentaje_citas]*12
         })
     
         base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).round().astype(int)
     
         # =============================
-        # EDITOR (sin mostrar Mes)
+        # EDITOR
         # =============================
         tabla = st.data_editor(
             base[["NombreMes","Volumen","%Citas","MetaCitas"]],
@@ -651,8 +653,8 @@ if st.session_state.rol == "admin":
             use_container_width=True,
             column_config={
                 "NombreMes": st.column_config.TextColumn("Mes", disabled=True),
-                "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True),
-                "%Citas": st.column_config.NumberColumn("% citas", min_value=0.0, max_value=1.0, step=0.05)
+                "%Citas": st.column_config.NumberColumn("% citas", disabled=True),  # ⭐ visible pero bloqueado
+                "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True)
             }
         )
     
@@ -660,7 +662,7 @@ if st.session_state.rol == "admin":
         tabla["Mes"] = list(range(1,13))
     
         # recalcular meta
-        tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).round().astype(int)
+        tabla["MetaCitas"] = (tabla["Volumen"] * porcentaje_citas).round().astype(int)
     
         # =============================
         # GUARDAR
@@ -1166,3 +1168,4 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
