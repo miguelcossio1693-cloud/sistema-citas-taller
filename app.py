@@ -342,7 +342,6 @@ def mostrar_tablero(df_dia, sede):
 if st.session_state.rol == "admin":
 
     tab1, tab2 = st.tabs(["📊 Resumen Ejecutivo","🎯 Configurar Meta"])
-
     # =====================================================
     # TAB 1 - RESUMEN EJECUTIVO
     # =====================================================
@@ -410,7 +409,7 @@ if st.session_state.rol == "admin":
         ]
 
         # =====================================================
-        # KPIs
+        # ⭐ KPIs COMPLETOS
         # =====================================================
         st.subheader("🌎 Indicadores")
 
@@ -419,11 +418,63 @@ if st.session_state.rol == "admin":
         no_show = len(df_mes[df_mes["Estado"] == "No asistió"])
         reprogramadas = len(df_mes[df_mes["Estado"] == "Reprogramada"])
 
+        efectividad_pct = round((efectivas/total_mes)*100,1) if total_mes>0 else 0
+        no_show_pct = round((no_show/total_mes)*100,1) if total_mes>0 else 0
+
         c1,c2,c3,c4 = st.columns(4)
         c1.metric("📅 Total", total_mes)
         c2.metric("✅ Efectivas", efectivas)
         c3.metric("❌ No Show", no_show)
         c4.metric("🔄 Reprogramadas", reprogramadas)
+
+        st.divider()
+
+        cA,cB = st.columns(2)
+        cA.metric("🎯 % Efectividad", f"{efectividad_pct}%")
+        cB.metric("⚠ % No Show", f"{no_show_pct}%")
+
+        if total_mes>0:
+            st.progress(efectivas/total_mes)
+
+        st.divider()
+
+        # =====================================================
+        # ⭐ META
+        # =====================================================
+        df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
+        total_validas = len(df_validas)
+
+        if sede_admin == "TODAS":
+            meta_total = metas["MetaMensual"].sum()
+        else:
+            fila_meta = metas[metas["Sede"] == sede_admin]
+            meta_total = int(fila_meta["MetaMensual"].values[0]) if not fila_meta.empty else 0
+
+        avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total>0 else 0
+
+        m1,m2,m3 = st.columns(3)
+        m1.metric("📅 Citas válidas", total_validas)
+        m2.metric("🎯 Meta", meta_total)
+        m3.metric("📈 Avance", f"{avance_meta_pct}%")
+
+        if meta_total>0:
+            st.progress(min(total_validas/meta_total,1.0))
+
+        st.divider()
+
+        # =====================================================
+        # ⭐ DESCARGAR EXCEL
+        # =====================================================
+        st.subheader("⬇ Exportar reporte")
+
+        excel_file = generar_excel(df_mes,"Reporte Ejecutivo")
+
+        st.download_button(
+            label="📥 Descargar Excel",
+            data=excel_file,
+            file_name=f"reporte_{sede_admin}_{mes_sel}_{año_sel}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         st.divider()
 
@@ -494,7 +545,6 @@ if st.session_state.rol == "admin":
                         df.to_csv(ARCHIVO_CITAS, index=False)
                         st.success("Cita eliminada")
                         st.rerun()
-
     # =====================================================
     # TAB 2 - CONFIGURAR META
     # =====================================================
@@ -991,6 +1041,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
