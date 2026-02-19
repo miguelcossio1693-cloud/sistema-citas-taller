@@ -631,36 +631,63 @@ if st.session_state.rol == "admin":
                     key="plan_year"
                 )
         
-            # ⭐ CARGAR HISTORIAL
-            df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
+            # ⭐ CREAR ARCHIVO SI NO EXISTE
+            if not os.path.exists(ARCHIVO_VOLUMEN):
+                df_volumen = pd.DataFrame(columns=["Sede","Año","Mes","Volumen","%Citas","MetaCitas"])
+                df_volumen.to_csv(ARCHIVO_VOLUMEN,index=False)
+            else:
+                df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
         
-            # ⭐ BASE MENSUAL
+            # ⭐ BASE
+            meses_dict = {
+                1:"Enero",2:"Febrero",3:"Marzo",4:"Abril",
+                5:"Mayo",6:"Junio",7:"Julio",8:"Agosto",
+                9:"Septiembre",10:"Octubre",11:"Noviembre",12:"Diciembre"
+            }
+        
             base = pd.DataFrame({
-                "Mes": list(range(1,13)),
+                "Mes": list(meses_dict.keys()),
+                "NombreMes": list(meses_dict.values()),
                 "Volumen": [0]*12,
                 "%Citas": [0.40]*12
             })
         
-            # ⭐ CARGAR REGISTROS EXISTENTES
+            # ⭐ CARGAR REGISTROS EXISTENTES (MERGE CORRECTO)
             df_exist = df_volumen[
                 (df_volumen["Sede"] == sede_vol) &
                 (df_volumen["Año"] == año_plan)
             ]
         
             if not df_exist.empty:
-                base.update(df_exist[["Mes","Volumen","%Citas"]])
+                base = base.merge(
+                    df_exist[["Mes","Volumen","%Citas"]],
+                    on="Mes",
+                    how="left",
+                    suffixes=("","_old")
+                )
         
-            # ⭐ EDITOR
+                base["Volumen"] = base["Volumen_old"].fillna(base["Volumen"])
+                base["%Citas"] = base["%Citas_old"].fillna(base["%Citas"])
+                base.drop(columns=["Volumen_old","%Citas_old"], inplace=True)
+        
+            # ⭐ META AUTOMÁTICA
+            base["MetaCitas"] = (base["Volumen"] * base["%Citas"]).astype(int)
+        
+            # ⭐ EDITOR LIMPIO
             tabla = st.data_editor(
-                base,
+                base[["Mes","NombreMes","Volumen","%Citas","MetaCitas"]],
                 num_rows="fixed",
-                use_container_width=True
+                use_container_width=True,
+                column_config={
+                    "NombreMes": st.column_config.TextColumn("Mes", disabled=True),
+                    "MetaCitas": st.column_config.NumberColumn("Meta citas", disabled=True)
+                }
             )
         
-            # ⭐ CALCULAR META
+            # ⭐ RECALCULAR META POST EDICIÓN
             tabla["MetaCitas"] = (tabla["Volumen"] * tabla["%Citas"]).astype(int)
         
-            st.dataframe(tabla, use_container_width=True)
+            st.dataframe(tabla[["NombreMes","Volumen","%Citas","MetaCitas"]], use_container_width=True)
         
             # ⭐ GUARDAR
             if st.button("💾 Guardar planificación anual"):
@@ -668,7 +695,7 @@ if st.session_state.rol == "admin":
                 tabla["Sede"] = sede_vol
                 tabla["Año"] = año_plan
         
-                # eliminar registros previos
+                # eliminar anteriores
                 df_volumen = df_volumen[
                     ~(
                         (df_volumen["Sede"] == sede_vol) &
@@ -676,10 +703,10 @@ if st.session_state.rol == "admin":
                     )
                 ]
         
-                df_volumen = pd.concat([df_volumen, tabla])
+                df_volumen = pd.concat([df_volumen, tabla[["Sede","Año","Mes","Volumen","%Citas","MetaCitas"]]])
                 df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
         
-                # ⭐ actualizar metas.csv con mes actual
+                # ⭐ actualizar meta mensual actual
                 mes_actual = datetime.today().month
                 meta_mes = tabla.loc[tabla["Mes"] == mes_actual, "MetaCitas"].values[0]
         
@@ -1178,6 +1205,7 @@ else:
             st.progress(min(total_validas/meta_sede,1.0))
 
     
+
 
 
 
