@@ -582,13 +582,23 @@ if st.session_state.rol == "admin":
                     html += "<td></td>"
                 else:
                     cant = conteo.get(dia,0)
-                    html += f"<td style='padding:8px;border:1px solid #ddd;'><b>{dia}</b><br>{cant}</td>"
+        
+                    # ⭐ COLOR DINÁMICO
+                    color = "#2ECC71" if cant > 0 else "#2C3E50"
+        
+                    html += f"""
+                    <td style='padding:8px;border:1px solid #ddd;'>
+                    <b>{dia}</b><br>
+                    <span style='color:{color}; font-weight:600;'>{cant}</span>
+                    </td>
+                    """
             html += "</tr>"
         
         html += "</table>"
         st.markdown(html, unsafe_allow_html=True)
         
         st.divider()
+
         # =====================================================
         # 🔥 ELIMINACIÓN CITAS ADMIN
         # =====================================================
@@ -1187,5 +1197,6 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
