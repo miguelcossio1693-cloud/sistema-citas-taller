@@ -244,7 +244,14 @@ if not os.path.exists(ARCHIVO_METAS):
     metas = pd.DataFrame(columns=["Sede","MetaMensual"])
     metas.to_csv(ARCHIVO_METAS, index=False, sep=";")
 else:
-    metas = pd.read_csv(ARCHIVO_METAS, sep=";")
+    try:
+        metas = pd.read_csv(ARCHIVO_METAS, sep=";")
+    except:
+        metas = pd.read_csv(ARCHIVO_METAS)
+
+    # 🔥 Si vino mal separado
+    if len(metas.columns) == 1:
+        metas = pd.read_csv(ARCHIVO_METAS, sep=",")
 
 # =============================
 # CREAR / CARGAR VOLUMEN
@@ -1285,4 +1292,5 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
