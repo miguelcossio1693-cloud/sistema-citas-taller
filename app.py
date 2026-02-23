@@ -23,6 +23,35 @@ ARCHIVO_METAS = "metas.csv"
 ARCHIVO_VOLUMEN = "volumen.csv"
 
 # =============================
+# CONEXIÓN GOOGLE SHEETS
+# =============================
+def conectar_sheet():
+    try:
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scope
+        )
+
+        client = gspread.authorize(creds)
+
+        sheet = client.open_by_key("111V55WlL7WkgpZc7FFSOXntAPwmx_RCZ7DuW-4AzJjY")
+
+        return sheet
+
+    except Exception as e:
+        st.error("Error conectando con Google Sheets")
+        st.error(e)
+        st.stop()
+
+
+
+
+# =============================
 # USUARIOS
 # =============================
 USUARIOS = {
@@ -213,6 +242,27 @@ if not os.path.exists(ARCHIVO_CITAS):
 
     # ⭐ guardar con separador correcto
     df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
+    # Guardado local (backup)
+    df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
+    
+    # Guardado en Google Sheets
+    worksheet = obtener_hoja_citas()
+    
+    worksheet.append_row([
+        nuevo_id,
+        st.session_state.sede,
+        str(fecha),
+        hora,
+        tecnico,
+        placa.upper(),
+        modelo,
+        nombre,
+        celular,
+        servicio,
+        duracion,
+        "Pendiente",
+        "No"
+    ])
 
 else:
     # ⭐ cargar con separador correcto
@@ -1296,6 +1346,7 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
 
