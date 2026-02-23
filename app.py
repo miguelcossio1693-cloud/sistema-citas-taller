@@ -206,11 +206,13 @@ columnas_base = [
 if not os.path.exists(ARCHIVO_CITAS):
 
     df = pd.DataFrame(columns=columnas_base)
-    df.to_csv(ARCHIVO_CITAS, index=False)
+
+    # ⭐ guardar con separador correcto
+    df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
 
 else:
-    # 🔥 cargar todo como texto evita corrupción de tipos
-    df = pd.read_csv(ARCHIVO_CITAS, dtype=str)
+    # ⭐ cargar con separador correcto
+    df = pd.read_csv(ARCHIVO_CITAS, dtype=str, sep=";")
 
 # =============================
 # NORMALIZAR COLUMNAS (PRO)
@@ -1189,6 +1191,7 @@ else:
     
         if meta_sede > 0:
             st.progress(min(total_validas/meta_sede,1.0))
+
 
 
 
