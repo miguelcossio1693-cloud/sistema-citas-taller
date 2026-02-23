@@ -253,9 +253,9 @@ if not os.path.exists(ARCHIVO_VOLUMEN):
     df_volumen = pd.DataFrame(columns=[
         "Sede","Año","Mes","Volumen","%Citas","MetaCitas"
     ])
-    df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
+    df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False, sep=";")
 else:
-    df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
+    df_volumen = pd.read_csv(ARCHIVO_VOLUMEN, sep=";")
 
 # ⭐ TIPADO SEGURO
 if not df_volumen.empty:
@@ -1278,6 +1278,7 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
 
