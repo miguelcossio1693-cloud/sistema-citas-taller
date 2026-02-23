@@ -431,31 +431,38 @@ if st.session_state.rol == "admin":
                 st.warning("No hay registros para la sede seleccionada")
                 df_admin_filtrado = pd.DataFrame(columns=df.columns)
         
-            # ⭐ FECHA SEGURA
+           # ⭐ FECHA SEGURA
             df_admin_filtrado["Fecha"] = pd.to_datetime(
                 df_admin_filtrado["Fecha"], errors="coerce"
             )
-        
-            # ⭐ SI NO HAY FECHAS → usar año actual
-            if df_admin_filtrado["Fecha"].dropna().empty:
-                año_sel = datetime.today().year
-                mes_sel = datetime.today().month
+            
+            df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
+            
+            # ⭐ SELECTORES SIEMPRE VISIBLES
+            año_actual = datetime.today().year
+            mes_actual = datetime.today().month
+            
+            # Si hay datos, usar años disponibles
+            if not df_admin_filtrado.empty:
+                años_disponibles = sorted(
+                    df_admin_filtrado["Fecha"].dt.year.unique(),
+                    reverse=True
+                )
             else:
-                df_admin_filtrado = df_admin_filtrado.dropna(subset=["Fecha"])
-        
-                año_sel = st.selectbox(
-                    "Año",
-                    sorted(df_admin_filtrado["Fecha"].dt.year.unique(), reverse=True),
-                    key="admin_year"
-                )
-        
-                mes_sel = st.selectbox(
-                    "Mes",
-                    list(range(1,13)),
-                    index=datetime.today().month-1,
-                    format_func=lambda x: calendar.month_name[x],
-                    key="admin_month"
-                )
+                años_disponibles = [año_actual]
+            
+            año_sel = st.selectbox(
+                "Año",
+                años_disponibles,
+                index=0
+            )
+            
+            mes_sel = st.selectbox(
+                "Mes",
+                list(range(1,13)),
+                index=mes_actual-1,
+                format_func=lambda x: calendar.month_name[x]
+            )
 
         # =============================
         # DASHBOARD
@@ -1271,4 +1278,5 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
