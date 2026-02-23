@@ -255,7 +255,14 @@ if not os.path.exists(ARCHIVO_VOLUMEN):
     ])
     df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False, sep=";")
 else:
-    df_volumen = pd.read_csv(ARCHIVO_VOLUMEN, sep=";")
+    try:
+        df_volumen = pd.read_csv(ARCHIVO_VOLUMEN, sep=";")
+    except:
+        df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
+
+    # 🔥 Si vino mal separado, corregir
+    if len(df_volumen.columns) == 1:
+        df_volumen = pd.read_csv(ARCHIVO_VOLUMEN, sep=",")
 
 # ⭐ TIPADO SEGURO
 if not df_volumen.empty:
@@ -1278,3 +1285,4 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
