@@ -1,14 +1,15 @@
 import streamlit as st
 import os
-
-st.write("Ruta actual:", os.getcwd())
-
 import pandas as pd
 from datetime import datetime, timedelta
 import calendar
 import pytz
 from streamlit_autorefresh import st_autorefresh
 from io import BytesIO
+
+# 🔹 NUEVO
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(layout="wide")
 
@@ -1295,6 +1296,7 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
 
