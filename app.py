@@ -250,10 +250,18 @@ else:
 # CREAR / CARGAR VOLUMEN
 # =============================
 if not os.path.exists(ARCHIVO_VOLUMEN):
-    df_volumen = pd.DataFrame(columns=["Sede","Fecha","VolumenMensual","MetaCitas"])
+    df_volumen = pd.DataFrame(columns=[
+        "Sede","Año","Mes","Volumen","%Citas","MetaCitas"
+    ])
     df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False)
 else:
     df_volumen = pd.read_csv(ARCHIVO_VOLUMEN)
+
+# ⭐ TIPADO SEGURO
+if not df_volumen.empty:
+    df_volumen["Año"] = pd.to_numeric(df_volumen["Año"], errors="coerce")
+    df_volumen["Mes"] = pd.to_numeric(df_volumen["Mes"], errors="coerce")
+    df_volumen["MetaCitas"] = pd.to_numeric(df_volumen["MetaCitas"], errors="coerce")
 
 # =============================
 # FUNCION DINAMICA
@@ -477,23 +485,43 @@ if st.session_state.rol == "admin":
             else:
                 semaforo = "🔴"
         
-            # ⭐ PROYECCIÓN
+           # ⭐ PROYECCIÓN CORRECTA
             dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
-            dia_actual = datetime.today().day
-            ritmo_diario = total_mes/dia_actual if dia_actual>0 else 0
-            proyeccion = int(ritmo_diario*dias_mes)
+            hoy = datetime.today()
+            
+            if año_sel == hoy.year and mes_sel == hoy.month:
+                dia_actual = hoy.day
+            else:
+                # Si es mes pasado o futuro usamos el mes completo
+                dia_actual = dias_mes
+            
+            ritmo_diario = total_mes / dia_actual if dia_actual > 0 else 0
+            proyeccion = int(ritmo_diario * dias_mes)
+
         
-            # ⭐ META
+            # ⭐ META (desde planificación anual)
+            
             df_validas = df_mes[df_mes["Estado"].isin(["Pendiente","Asistió"])]
             total_validas = len(df_validas)
-        
+            
             if sede_admin == "TODAS":
-                meta_total = metas["MetaMensual"].sum()
+                
+                meta_total = df_volumen[
+                    (df_volumen["Año"] == año_sel) &
+                    (df_volumen["Mes"] == mes_sel)
+                ]["MetaCitas"].sum()
+            
             else:
-                fila_meta = metas[metas["Sede"] == sede_admin]
-                meta_total = int(fila_meta["MetaMensual"].values[0]) if not fila_meta.empty else 0
-        
-            avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total>0 else 0
+            
+                fila_meta = df_volumen[
+                    (df_volumen["Sede"] == sede_admin) &
+                    (df_volumen["Año"] == año_sel) &
+                    (df_volumen["Mes"] == mes_sel)
+                ]
+            
+                meta_total = int(fila_meta["MetaCitas"].values[0]) if not fila_meta.empty else 0
+            
+            avance_meta_pct = round((total_validas/meta_total)*100,1) if meta_total > 0 else 0
         
             # ⭐ KPI PRINCIPALES
             c1,c2,c3,c4,c5 = st.columns(5)
@@ -506,16 +534,18 @@ if st.session_state.rol == "admin":
             st.divider()
         
             # ⭐ KPI AVANZADOS + META (MISMA FILA)
-            cA,cB,cC,cD = st.columns(4)
+            cA, cB, cC, cD, cE = st.columns(5)
+            
             cA.metric(f"{semaforo} % Efectividad", f"{efectividad_pct}%")
             cB.metric("⚠ % No Show", f"{no_show_pct}%")
             cC.metric("📈 Proyección fin mes", proyeccion)
             cD.metric("📊 Avance meta", f"{avance_meta_pct}%")
-        
+            
             if meta_total > 0:
-                st.progress(min(total_validas/meta_total,1.0))
-        
-            st.divider()
+                prob_cumplimiento = round((proyeccion/meta_total)*100,1)
+                cE.metric("🧠 Probabilidad cumplimiento", f"{prob_cumplimiento}%")
+            else:
+                cE.metric("🧠 Probabilidad cumplimiento", "0%")
         
             # ⭐ ALERTAS
             col_alerta, col_ritmo = st.columns([2,1])
@@ -530,6 +560,25 @@ if st.session_state.rol == "admin":
         
             with col_ritmo:
                 st.info(f"📊 Ritmo actual:{round(ritmo_diario,1)} citas/día")
+                # ⭐ Citas necesarias por día restante
+                if meta_total > 0:
+                
+                    hoy = datetime.today()
+                    dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
+                
+                    if año_sel == hoy.year and mes_sel == hoy.month:
+                        dias_restantes = dias_mes - hoy.day
+                    else:
+                        dias_restantes = 0
+                
+                    faltante = meta_total - total_validas
+                
+                    if dias_restantes > 0 and faltante > 0:
+                        citas_dia_necesarias = round(faltante / dias_restantes,1)
+                        st.warning(f"📌 Necesitas {citas_dia_necesarias} citas/día para cumplir meta")
+                    elif faltante <= 0:
+                        st.success("🎯 Meta ya alcanzada")
+
 
         # =====================================================
         # ⭐ DESCARGAR EXCEL
@@ -604,9 +653,10 @@ if st.session_state.rol == "admin":
             key="admin_fecha_delete"
         )
 
-        df_del = df_admin_filtrado.copy()
+        df_del = df_mes.copy()
         df_del["Fecha"] = pd.to_datetime(df_del["Fecha"]).dt.date
         df_del = df_del[df_del["Fecha"] == fecha_admin]
+
 
         if df_del.empty:
             st.info("No hay citas para esa fecha")
@@ -627,7 +677,7 @@ if st.session_state.rol == "admin":
                 with col2:
                     if st.button(f"🗑 Eliminar {row['ID']}", key=f"del_admin_{row['ID']}"):
                         df = df[df["ID"] != row["ID"]]
-                        df.to_csv(ARCHIVO_CITAS, index=False)
+                        df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
                         st.success("Cita eliminada")
                         st.rerun()
     # =====================================================
@@ -855,7 +905,7 @@ else:
                 }])
     
                 df = pd.concat([df, nueva], ignore_index=True)
-                df.to_csv(ARCHIVO_CITAS, index=False)
+                df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
     
                 st.success("Cita registrada correctamente")
                 st.rerun()
@@ -924,12 +974,12 @@ else:
                     with col2:
                         if st.button(f"✔ Asistió {row['ID']}"):
                             df.loc[df["ID"] == row["ID"], "Estado"] = "Asistió"
-                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
                             st.rerun()
     
                         if st.button(f"❌ No asistió {row['ID']}"):
                             df.loc[df["ID"] == row["ID"], "Estado"] = "No asistió"
-                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
                             st.rerun()
     
                     # ==========================
@@ -996,7 +1046,7 @@ else:
                                     df.loc[df["ID"] == row["ID"], "Hora"] = nueva_hora
                                     df.loc[df["ID"] == row["ID"], "Duracion"] = nueva_duracion
     
-                                    df.to_csv(ARCHIVO_CITAS, index=False)
+                                    df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
                                     st.success("Cita actualizada correctamente")
                                     st.rerun()
     
@@ -1006,7 +1056,7 @@ else:
                     with col4:
                         if st.button(f"🗑 {row['ID']}"):
                             df = df[df["ID"] != row["ID"]]
-                            df.to_csv(ARCHIVO_CITAS, index=False)
+                            df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
                             st.warning("Cita eliminada")
                             st.rerun()
     
@@ -1090,7 +1140,7 @@ else:
                                 df.loc[df["ID"] == row["ID"], "Reprogramada"] = "Sí"
     
                                 df = pd.concat([df, nueva], ignore_index=True)
-                                df.to_csv(ARCHIVO_CITAS, index=False)
+                                df.to_csv(ARCHIVO_CITAS, index=False, sep=";")
     
                                 st.success("Cita reprogramada correctamente")
                                 st.rerun()
@@ -1178,23 +1228,47 @@ else:
         total_validas = len(df_validas)
     
         meta_sede = 0
-        fila_meta = metas[metas["Sede"] == st.session_state.sede]
-        if not fila_meta.empty:
-            meta_sede = int(fila_meta["MetaMensual"].values[0])
-    
+        fila_meta = df_volumen[
+            (df_volumen["Sede"] == st.session_state.sede) &
+            (df_volumen["Año"] == año_sel) &
+            (df_volumen["Mes"] == mes_sel)
+        ]
+        
+        meta_sede = int(fila_meta["MetaCitas"].values[0]) if not fila_meta.empty else 0
+        
         avance_pct = round((total_validas/meta_sede)*100,1) if meta_sede > 0 else 0
-    
+        
         colM1, colM2, colM3 = st.columns(3)
         colM1.metric("📅 Citas válidas", total_validas)
         colM2.metric("🎯 Meta Mensual", meta_sede)
         colM3.metric("📈 Avance Meta", f"{avance_pct}%")
-    
+
         if meta_sede > 0:
+        
             st.progress(min(total_validas/meta_sede,1.0))
-
-
-
-
-
-
+        
+            # ⭐ Gestión diaria asesor (mejorada)
+            hoy = datetime.today()
+            dias_mes = calendar.monthrange(año_sel, mes_sel)[1]
+        
+            if año_sel == hoy.year and mes_sel == hoy.month:
+                dias_restantes = dias_mes - hoy.day + 1   # incluye hoy
+            else:
+                dias_restantes = 0
+        
+            faltante = meta_sede - total_validas
+        
+            if faltante <= 0:
+                st.success("🎯 ¡Meta alcanzada!")
+            
+            elif dias_restantes > 0:
+                citas_dia_necesarias = round(faltante / dias_restantes,1)
+        
+                st.warning(
+                    f"📌 Necesitas {citas_dia_necesarias} citas/día "
+                    f"durante {dias_restantes} días para cumplir meta"
+                )
+        
+            else:
+                st.info("📅 Mes cerrado")
 
