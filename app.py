@@ -938,7 +938,7 @@ else:
                 (df_temp["Fecha"] == fecha) &
                 (df_temp["Estado"].isin(["Pendiente","Asistió"]))
             ]
-            dup = df_dia[df_dia["Celular"] == celular]
+            dup = df_dia[df_dia["Placa"] == placa]
             if not dup.empty:
                 st.warning("Cliente ya tiene cita ese día")
                 st.stop()
@@ -1346,6 +1346,7 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
 
