@@ -242,7 +242,7 @@ df = df.copy()
 # =============================
 if not os.path.exists(ARCHIVO_METAS):
     metas = pd.DataFrame(columns=["Sede","MetaMensual"])
-    metas.to_csv(ARCHIVO_METAS,index=False, sep=";")
+    metas.to_csv(ARCHIVO_METAS, index=False, sep=";")
 else:
     metas = pd.read_csv(ARCHIVO_METAS, sep=";")
 
@@ -764,8 +764,8 @@ if st.session_state.rol == "admin":
                 ignore_index=True
             )
     
-            df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False, sep=";")
-                
+	    df_volumen.to_csv(ARCHIVO_VOLUMEN, index=False, sep=";")
+    
             st.success("Planificación guardada correctamente")
 
 # =============================
@@ -1278,8 +1278,3 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
-
-
-
-
-
