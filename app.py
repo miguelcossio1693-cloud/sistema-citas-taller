@@ -1,7 +1,10 @@
 import streamlit as st
+import os
+
+st.write("Ruta actual:", os.getcwd())
+
 import pandas as pd
 from datetime import datetime, timedelta
-import os
 import calendar
 import pytz
 from streamlit_autorefresh import st_autorefresh
@@ -1292,5 +1295,6 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
