@@ -242,9 +242,9 @@ df = df.copy()
 # =============================
 if not os.path.exists(ARCHIVO_METAS):
     metas = pd.DataFrame(columns=["Sede","MetaMensual"])
-    metas.to_csv(ARCHIVO_METAS,index=False)
+    metas.to_csv(ARCHIVO_METAS,index=False, sep=";")
 else:
-    metas = pd.read_csv(ARCHIVO_METAS)
+    metas = pd.read_csv(ARCHIVO_METAS, sep=";")
 
 # =============================
 # CREAR / CARGAR VOLUMEN
@@ -1278,5 +1278,6 @@ else:
         
             else:
                 st.info("📅 Mes cerrado")
+
 
 
